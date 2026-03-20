@@ -1,0 +1,97 @@
+---
+name: outbound
+description: "This skill should be used when the user asks to \"メールを送って\", \"営業をかけて\", \"アプローチして\", \"企業に連絡して\", \"アウトバウンドを実行して\", or wants to execute outbound sales. 営業リストの企業に対してメール送付・フォーム入力・SNS DMを自動で行う。件数指定も可能。"
+argument-hint: "<project-directory-name> [件数]"
+allowed-tools:
+  - Bash
+  - Read
+  - Write
+  - WebFetch
+  - mcp__claude_ai_Gmail__gmail_create_draft
+  - mcp__claude_ai_Gmail__gmail_search_messages
+  - mcp__claude_ai_Gmail__gmail_read_message
+  - mcp__claude_in_chrome__tabs_context_mcp
+  - mcp__claude_in_chrome__tabs_create_mcp
+  - mcp__claude_in_chrome__navigate
+  - mcp__claude_in_chrome__read_page
+  - mcp__claude_in_chrome__get_page_text
+  - mcp__claude_in_chrome__find
+  - mcp__claude_in_chrome__form_input
+  - mcp__claude_in_chrome__computer
+  - mcp__claude_in_chrome__javascript_tool
+---
+
+# Outbound - アウトバウンド営業実行
+
+営業リストの企業に対して、メール・問い合わせフォーム・SNS DMで順次アプローチするスキル。全自動で実行する。
+
+## 実行手順
+
+### 1. 準備
+
+プロジェクトディレクトリのBUSINESS.mdとSALES_STRATEGY.mdを読み込み、メッセージングの方針を把握する。
+
+未アプローチの企業リストをDBから取得する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT id, company_name, email, contact_form_url, sns_accounts, match_reason, priority FROM prospects WHERE project_id = <id> AND status = 'new' ORDER BY priority ASC, id ASC LIMIT <件数>;"
+```
+
+件数の指定がない場合は全件を対象とする。
+
+### 2. 各企業へのアプローチ
+
+優先度順に、各企業に対して利用可能なチャネルで順次アプローチする。チャネルの優先順位:
+
+1. **メール** — メールアドレスがある場合
+2. **問い合わせフォーム** — フォームURLがある場合
+3. **SNS DM** — SNSアカウントがある場合
+
+1社につき、利用可能なチャネル全てでアプローチする必要はない。最も効果的な1チャネルで十分。ただし、メールアドレスがある場合はメールを優先する。
+
+### 3. メール送信
+
+Gmail MCPを使用してメールを送信する。`references/email-guidelines.md` のガイドラインに従ってメールを作成する。
+
+`mcp__claude_ai_Gmail__gmail_create_draft` でドラフトを作成し、送信する。
+
+送信後、outreach_logsに記録する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO outreach_logs (prospect_id, channel, subject, body, status) VALUES (<id>, 'email', '<subject>', '<body>', 'sent');"
+```
+
+### 4. 問い合わせフォーム入力
+
+claude-in-chromeを使用してフォームに入力する。`references/form-filling.md` の手順に従う。
+
+送信後、outreach_logsに記録する（channel: 'form'）。
+
+### 5. SNS DM
+
+claude-in-chromeを使用してSNSでDMを送る。
+
+**手順:**
+1. prospects.sns_accounts（JSON）からアカウント情報を取得
+2. ブラウザでSNSプロフィールページに移動
+3. DMまたはメッセージ機能を使ってメッセージを送る
+
+**メッセージ:** SNS用に短く簡潔にする。SALES_STRATEGY.mdの「SNSメッセージ」セクションを参考に。
+
+送信後、outreach_logsに記録する（channel: 'sns_twitter' 等）。
+
+### 6. ステータス更新
+
+アプローチ完了した企業のステータスを更新する:
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET status = 'contacted', updated_at = datetime('now') WHERE id = <id>;"
+```
+
+### 7. 結果レポート
+
+以下を報告する:
+- アプローチした企業数
+- チャネル別の内訳（メール: N件、フォーム: N件、SNS: N件）
+- 失敗した件数と理由
+- 次のステップとして `/check-results` の実行を案内する
