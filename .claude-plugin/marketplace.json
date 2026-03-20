@@ -1,10 +1,10 @@
 {
-  "name": "aitit-plugins",
+  "name": "surpassone-plugins",
   "owner": {
-    "name": "aitit-inc"
+    "name": "SurpassOne Inc."
   },
   "metadata": {
-    "description": "aitit-inc が提供する Claude Code プラグイン集",
+    "description": "SurpassOne Inc. が提供する Claude Code プラグイン集",
     "pluginRoot": "./plugins"
   },
   "plugins": [
