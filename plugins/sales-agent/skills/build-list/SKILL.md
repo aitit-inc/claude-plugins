@@ -43,12 +43,10 @@ WebSearchとWebFetchを組み合わせて、片っ端から企業情報を収集
 各企業について以下の情報を可能な限り取得する:
 - 企業名
 - 業種
-- 所在地
 - 公式サイトURL
 - メールアドレス（問い合わせ先、代表メール等）
 - 問い合わせフォームURL
 - SNSアカウント（Twitter/X、LinkedIn、Facebook等）
-- キーパーソン（意思決定者の名前・役職）
 - マッチ理由（なぜこの企業がターゲットとして適切か）
 
 **探索のコツ:**
@@ -68,13 +66,24 @@ WebSearchとWebFetchを組み合わせて、片っ端から企業情報を収集
 
 ### 5. データベース登録
 
-収集した企業情報をDBに登録する:
+収集した企業情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず企業を登録し、次にプロジェクトとの紐付けを登録する。
+
+**Step 1: 企業をprospectsに登録（既存なら取得）**
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO prospects (project_id, company_name, industry, location, website_url, email, contact_form_url, sns_accounts, key_person, key_person_title, match_reason, priority) VALUES (...);"
+# 既存チェック
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT id FROM prospects WHERE company_name = '<name>';"
+# 新規の場合のみINSERT
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO prospects (company_name, industry, website_url, email, contact_form_url, sns_accounts) VALUES (...);"
 ```
 
-**重複チェック**: 登録前に企業名とproject_idで既存レコードを確認し、重複を避ける。
+**Step 2: プロジェクトとの紐付けを登録**
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (...);"
+```
+
+`project_prospects` には UNIQUE(project_id, prospect_id) 制約があるため、同じプロジェクトへの重複紐付けは自動で弾かれる。
 
 ### 6. 結果レポート
 

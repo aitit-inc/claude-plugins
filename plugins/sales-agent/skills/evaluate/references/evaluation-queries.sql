@@ -4,41 +4,43 @@
 -- アプローチ総数
 SELECT COUNT(*) as total_outreach
 FROM outreach_logs
-WHERE prospect_id IN (SELECT id FROM prospects WHERE project_id = <project_id>);
+WHERE project_id = <project_id>;
 
 -- チャネル別アプローチ数
 SELECT channel, COUNT(*) as count
 FROM outreach_logs
-WHERE prospect_id IN (SELECT id FROM prospects WHERE project_id = <project_id>)
+WHERE project_id = <project_id>
 GROUP BY channel;
 
 -- 反応数・ユニーク回答者数
 SELECT
     COUNT(*) as total_responses,
-    COUNT(DISTINCT prospect_id) as unique_responders
-FROM responses
-WHERE prospect_id IN (SELECT id FROM prospects WHERE project_id = <project_id>);
+    COUNT(DISTINCT o.prospect_id) as unique_responders
+FROM responses r
+JOIN outreach_logs o ON r.outreach_log_id = o.id
+WHERE o.project_id = <project_id>;
 
 -- センチメント別・反応種別の内訳
 SELECT sentiment, response_type, COUNT(*) as count
-FROM responses
-WHERE prospect_id IN (SELECT id FROM prospects WHERE project_id = <project_id>)
+FROM responses r
+JOIN outreach_logs o ON r.outreach_log_id = o.id
+WHERE o.project_id = <project_id>
 GROUP BY sentiment, response_type;
 
 -- 優先度別の反応率
 SELECT
-    p.priority,
-    COUNT(DISTINCT CASE WHEN o.id IS NOT NULL THEN p.id END) as contacted,
-    COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN p.id END) as responded
-FROM prospects p
-LEFT JOIN outreach_logs o ON p.id = o.prospect_id
-LEFT JOIN responses r ON p.id = r.prospect_id
-WHERE p.project_id = <project_id>
-GROUP BY p.priority;
+    pp.priority,
+    COUNT(DISTINCT CASE WHEN o.id IS NOT NULL THEN pp.prospect_id END) as contacted,
+    COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN pp.prospect_id END) as responded
+FROM project_prospects pp
+LEFT JOIN outreach_logs o ON pp.prospect_id = o.prospect_id AND o.project_id = pp.project_id
+LEFT JOIN responses r ON o.id = r.outreach_log_id
+WHERE pp.project_id = <project_id>
+GROUP BY pp.priority;
 
 -- ステータス別企業数
 SELECT status, COUNT(*) as count
-FROM prospects
+FROM project_prospects
 WHERE project_id = <project_id>
 GROUP BY status;
 
@@ -46,9 +48,24 @@ GROUP BY status;
 SELECT
     o.channel,
     COUNT(DISTINCT o.prospect_id) as contacted,
-    COUNT(DISTINCT r.prospect_id) as responded,
-    ROUND(CAST(COUNT(DISTINCT r.prospect_id) AS FLOAT) / NULLIF(COUNT(DISTINCT o.prospect_id), 0) * 100, 1) as response_rate_pct
+    COUNT(DISTINCT r.outreach_log_id) as responded,
+    ROUND(CAST(COUNT(DISTINCT r.outreach_log_id) AS FLOAT) / NULLIF(COUNT(DISTINCT o.id), 0) * 100, 1) as response_rate_pct
 FROM outreach_logs o
-LEFT JOIN responses r ON o.prospect_id = r.prospect_id AND o.id = r.outreach_log_id
-WHERE o.prospect_id IN (SELECT id FROM prospects WHERE project_id = <project_id>)
+LEFT JOIN responses r ON o.id = r.outreach_log_id
+WHERE o.project_id = <project_id>
 GROUP BY o.channel;
+
+-- 反応があったメールの本文（全件）
+SELECT o.id, o.channel, o.subject, o.body, r.sentiment, r.response_type
+FROM outreach_logs o
+JOIN responses r ON o.id = r.outreach_log_id
+WHERE o.project_id = <project_id>
+ORDER BY r.received_at DESC;
+
+-- 反応がなかったメールの本文（サンプル）
+SELECT o.id, o.channel, o.subject, o.body
+FROM outreach_logs o
+LEFT JOIN responses r ON o.id = r.outreach_log_id
+WHERE o.project_id = <project_id> AND r.id IS NULL
+ORDER BY o.sent_at DESC
+LIMIT 10;

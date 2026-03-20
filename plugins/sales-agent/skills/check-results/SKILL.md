@@ -27,7 +27,7 @@ allowed-tools:
 ステータスが `contacted` の企業リストとアプローチ履歴を取得する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN outreach_logs o ON p.id = o.prospect_id WHERE p.project_id = <id> AND p.status = 'contacted' ORDER BY o.sent_at ASC;"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = <id> AND pp.status = 'contacted' ORDER BY o.sent_at ASC;"
 ```
 
 ### 2. メール返信の確認
@@ -52,10 +52,10 @@ SNSでDMを送った企業について、claude-in-chromeで返信を確認す�
 反応があった場合、responsesテーブルに記録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (prospect_id, outreach_log_id, channel, content, sentiment, response_type) VALUES (<id>, <outreach_id>, '<channel>', '<content>', '<sentiment>', '<type>');"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (outreach_log_id, channel, content, sentiment, response_type) VALUES (<outreach_id>, '<channel>', '<content>', '<sentiment>', '<type>');"
 ```
 
-反応に応じてprospectsのステータスを更新する:
+反応に応じてproject_prospectsのステータスを更新する:
 - ポジティブな返信 → `responded`
 - ミーティング依頼 → `responded`
 - 明確な拒否 → `rejected`
@@ -63,7 +63,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (prospect_
 - 自動返信のみ → `contacted` のまま
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET status = '<new_status>', updated_at = datetime('now') WHERE id = <id>;"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET status = '<new_status>', updated_at = datetime('now') WHERE project_id = <project_id> AND prospect_id = <prospect_id>;"
 ```
 
 ### 5. 結果レポート

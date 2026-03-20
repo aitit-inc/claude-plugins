@@ -39,8 +39,8 @@ allowed-tools:
 - 時間帯・曜日別の傾向（送信日時から分析）
 
 **メッセージ分析:**
-- 反応があったメールの共通点
-- 反応がなかったメールとの差異
+- 反応があったメールの本文（outreach_logs.body）を全件読み込み、共通点を抽出
+- 反応がなかったメールからは数件サンプリングして比較
 - 件名の効果
 - 本文の長さ・構成の効果
 
@@ -71,7 +71,7 @@ allowed-tools:
 - 反応パターンに基づいてprospectsの優先度を更新
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET priority = <new_priority>, updated_at = datetime('now') WHERE project_id = <id> AND industry = '<industry>' AND status = 'new';"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET priority = <new_priority>, updated_at = datetime('now') WHERE project_id = <id> AND prospect_id IN (SELECT id FROM prospects WHERE industry = '<industry>') AND status = 'new';"
 ```
 
 ### 5. 評価記録の保存
@@ -79,7 +79,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET priority = 
 evaluationsテーブルに記録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO evaluations (project_id, metrics, findings, improvements, applied_changes) VALUES (<id>, '<metrics_json>', '<findings>', '<improvements_json>', '<applied_changes>');"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO evaluations (project_id, metrics, findings, improvements) VALUES (<id>, '<metrics_json>', '<findings>', '<improvements_json>');"
 ```
 
 ### 6. 結果レポート
