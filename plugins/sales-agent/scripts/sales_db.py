@@ -15,9 +15,7 @@ from typing import TypedDict
 # ---------------------------------------------------------------------------
 
 class Project(TypedDict):
-    id: int
-    name: str
-    directory: str
+    id: str  # PRIMARY KEY (テキスト、例: "my-product")
     created_at: str
     updated_at: str
 
@@ -40,7 +38,7 @@ class Prospect(TypedDict, total=False):
 
 class ProjectProspect(TypedDict, total=False):
     id: int
-    project_id: int
+    project_id: str
     prospect_id: int
     match_reason: str
     priority: int
@@ -51,7 +49,7 @@ class ProjectProspect(TypedDict, total=False):
 
 class OutreachLog(TypedDict, total=False):
     id: int
-    project_id: int
+    project_id: str
     prospect_id: int
     channel: str
     subject: str | None
@@ -73,7 +71,7 @@ class Response(TypedDict, total=False):
 
 class Evaluation(TypedDict, total=False):
     id: int
-    project_id: int
+    project_id: str
     evaluation_date: str
     metrics: str  # JSON string
     findings: str

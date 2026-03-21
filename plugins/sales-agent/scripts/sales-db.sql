@@ -1,9 +1,7 @@
 -- Sales Agent Database Schema
 
 CREATE TABLE IF NOT EXISTS projects (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL UNIQUE,
-    directory TEXT NOT NULL UNIQUE,
+    id TEXT PRIMARY KEY,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -26,7 +24,7 @@ CREATE TABLE IF NOT EXISTS prospects (
 
 CREATE TABLE IF NOT EXISTS project_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER NOT NULL,
+    project_id TEXT NOT NULL,
     prospect_id INTEGER NOT NULL,
     match_reason TEXT NOT NULL,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
     priority INTEGER NOT NULL DEFAULT 3,  -- 1=最高 5=最低
@@ -40,7 +38,7 @@ CREATE TABLE IF NOT EXISTS project_prospects (
 
 CREATE TABLE IF NOT EXISTS outreach_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER NOT NULL,
+    project_id TEXT NOT NULL,
     prospect_id INTEGER NOT NULL,
     channel TEXT NOT NULL,  -- email, form, sns_twitter, sns_linkedin, etc.
     subject TEXT,
@@ -65,7 +63,7 @@ CREATE TABLE IF NOT EXISTS responses (
 
 CREATE TABLE IF NOT EXISTS evaluations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    project_id INTEGER NOT NULL,
+    project_id TEXT NOT NULL,
     evaluation_date TEXT NOT NULL DEFAULT (datetime('now')),
     metrics TEXT NOT NULL,  -- JSON: {"total_sent": N, "response_rate": 0.XX, ...}
     findings TEXT NOT NULL,

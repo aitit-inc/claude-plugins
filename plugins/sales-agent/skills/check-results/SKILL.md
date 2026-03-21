@@ -29,7 +29,7 @@ allowed-tools:
 ステータスが `contacted` の営業先リストとアプローチ履歴を取得する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = ? AND pp.status = 'contacted' ORDER BY o.sent_at ASC" "<project_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = ? AND pp.status = 'contacted' ORDER BY o.sent_at ASC" "$0"
 ```
 
 ### 2. メール返信の確認
@@ -65,7 +65,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO responses
 - 自動返信のみ → `contacted` のまま
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "<project_id>" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "$0" "<prospect_id>"
 ```
 
 **送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、prospects に送付NGフラグを立て、notes に理由を記録する。これは全プロジェクト共通で適用される。

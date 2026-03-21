@@ -45,7 +45,7 @@ mkdir -p $0
 DBの `projects` テーブルにプロジェクトを登録する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (name, directory) VALUES (?, ?)" "$0" "./$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (id) VALUES (?)" "$0"
 ```
 
 ### 5. 完了報告

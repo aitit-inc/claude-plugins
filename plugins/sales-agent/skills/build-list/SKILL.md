@@ -106,7 +106,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO prospects
 **Step 3: プロジェクトとの紐付けを登録**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (?, ?, ?, ?)" "<project_id>" "<prospect_id>" "<match_reason>" "<priority>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (?, ?, ?, ?)" "$0" "<prospect_id>" "<match_reason>" "<priority>"
 ```
 
 `project_prospects` には UNIQUE(project_id, prospect_id) 制約があるため、同じプロジェクトへの重複紐付けは自動で弾かれる。
