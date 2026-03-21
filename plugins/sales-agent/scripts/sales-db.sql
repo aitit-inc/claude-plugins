@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_name TEXT NOT NULL,
+    corporate_number TEXT,  -- 法人番号（13桁）。わかる場合のみ
     industry TEXT,
     website_url TEXT,
     email TEXT,

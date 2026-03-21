@@ -66,18 +66,35 @@ WebSearchとWebFetchを組み合わせて、片っ端から企業情報を収集
 
 ### 5. データベース登録
 
-収集した企業情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず企業を登録し、次にプロジェクトとの紐付けを登録する。
+収集した企業情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず重複チェックを行い、既存なら既存レコードを使い、新規なら登録する。
 
-**Step 1: 企業をprospectsに登録（既存なら取得）**
+**Step 1: 重複チェック**
+
+各企業について、取得できた情報をすべて渡してチェックする:
 
 ```bash
-# 既存チェック
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT id FROM prospects WHERE company_name = '<name>';"
-# 新規の場合のみINSERT
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO prospects (company_name, industry, website_url, email, contact_form_url, sns_accounts) VALUES (...);"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
+  --company-name "<name>" \
+  --email "<email>" \
+  --website-url "<url>" \
+  --sns twitter "<account>" \
+  --corporate-number "<number>"
 ```
 
-**Step 2: プロジェクトとの紐付けを登録**
+引数は取得できたものだけ渡せばよい（すべて省略可能）。
+
+結果の判定:
+- `EXACT_MATCH` → 既存の prospect_id を使う。新規登録しない
+- `POSSIBLE_MATCH` → 既存レコードの詳細（company_name, website_url, email 等）を確認し、同一企業か別企業かを判断する。同一なら既存IDを使い、別企業なら新規登録する
+- マッチなし（exit code 1） → 新規登録する
+
+**Step 2: 新規の場合、prospectsに登録**
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO prospects (company_name, corporate_number, industry, website_url, email, contact_form_url, sns_accounts) VALUES (...);"
+```
+
+**Step 3: プロジェクトとの紐付けを登録**
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (...);"
