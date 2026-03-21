@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS prospects (
     email TEXT,
     contact_form_url TEXT,
     sns_accounts TEXT,  -- JSON: {"twitter": "...", "linkedin": "...", ...}
+    do_not_contact INTEGER NOT NULL DEFAULT 0,  -- 1 = 送付NG（全プロジェクト共通）
     notes TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))

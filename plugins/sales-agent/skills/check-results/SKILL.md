@@ -66,6 +66,14 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (outreach_
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET status = '<new_status>', updated_at = datetime('now') WHERE project_id = <project_id> AND prospect_id = <prospect_id>;"
 ```
 
+**送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、prospects に送付NGフラグを立て、notes に理由を記録する。これは全プロジェクト共通で適用される。
+
+```bash
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET do_not_contact = 1, notes = '<既存のnotesがあれば保持>送付NG: <理由の要約>', updated_at = datetime('now') WHERE id = <prospect_id>;"
+```
+
+単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。
+
 ### 5. 結果レポート
 
 以下を報告する:

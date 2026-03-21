@@ -34,7 +34,7 @@ allowed-tools:
 未アプローチの企業リストをDBから取得する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = <id> AND pp.status = 'new' ORDER BY pp.priority ASC, p.id ASC LIMIT <件数>;"
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = <id> AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT <件数>;"
 ```
 
 件数の指定がない場合は全件を対象とする。
