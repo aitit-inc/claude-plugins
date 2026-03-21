@@ -34,7 +34,7 @@ allowed-tools:
 未アプローチの営業先リストをDBから取得する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = <id> AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT <件数>;"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "<project_id>" "<件数>"
 ```
 
 件数の指定がない場合は全件を対象とする。
@@ -58,7 +58,7 @@ Gmail MCPを使用してメールを送信する。`references/email-guidelines.
 送信後、outreach_logsに記録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (<project_id>, <prospect_id>, 'email', '<subject>', '<body>', 'sent');"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, ?)" "<project_id>" "<prospect_id>" "email" "<subject>" "<body>" "sent"
 ```
 
 ### 4. 問い合わせフォーム入力
@@ -85,7 +85,7 @@ claude-in-chromeを使用してSNSでDMを送る。
 アプローチ完了した営業先のステータスを更新する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = <project_id> AND prospect_id = <prospect_id>;"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "<project_id>" "<prospect_id>"
 ```
 
 ### 7. 結果レポート

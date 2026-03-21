@@ -27,7 +27,7 @@ allowed-tools:
 ステータスが `contacted` の営業先リストとアプローチ履歴を取得する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = <id> AND pp.status = 'contacted' ORDER BY o.sent_at ASC;"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = ? AND pp.status = 'contacted' ORDER BY o.sent_at ASC" "<project_id>"
 ```
 
 ### 2. メール返信の確認
@@ -52,7 +52,7 @@ SNSでDMを送った営業先について、claude-in-chromeで返信を確認�
 反応があった場合、responsesテーブルに記録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (outreach_log_id, channel, content, sentiment, response_type) VALUES (<outreach_id>, '<channel>', '<content>', '<sentiment>', '<type>');"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO responses (outreach_log_id, channel, content, sentiment, response_type) VALUES (?, ?, ?, ?, ?)" "<outreach_id>" "<channel>" "<content>" "<sentiment>" "<type>"
 ```
 
 反応に応じてproject_prospectsのステータスを更新する:
@@ -63,13 +63,13 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO responses (outreach_
 - 自動返信のみ → `contacted` のまま
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET status = '<new_status>', updated_at = datetime('now') WHERE project_id = <project_id> AND prospect_id = <prospect_id>;"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "<project_id>" "<prospect_id>"
 ```
 
 **送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、prospects に送付NGフラグを立て、notes に理由を記録する。これは全プロジェクト共通で適用される。
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET do_not_contact = 1, notes = '<既存のnotesがあれば保持>送付NG: <理由の要約>', updated_at = datetime('now') WHERE id = <prospect_id>;"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET do_not_contact = 1, notes = ?, updated_at = datetime('now') WHERE id = ?" "<既存のnotesがあれば保持>送付NG: <理由の要約>" "<prospect_id>"
 ```
 
 単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。

@@ -74,7 +74,7 @@ WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収
 各営業先について、取得できた情報をすべて渡してチェックする:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_duplicate.py data.db \
   --company-name "<name>" \
   --email "<email>" \
   --website-url "<url>" \
@@ -84,7 +84,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
 
 引数は取得できたものだけ渡せばよい（すべて省略可能）。
 
-結果の判定:
+結果はJSON配列で返る。判定:
 - `EXACT_MATCH` → 既存の prospect_id を使う。新規登録しない
 - `POSSIBLE_MATCH` → 既存レコードの詳細（company_name, website_url, email 等）を確認し、同一の営業先か別の営業先かを判断する。同一なら既存IDを使い、別なら新規登録する
 - マッチなし（exit code 1） → 新規登録する
@@ -92,13 +92,13 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
 **Step 2: 新規の場合、prospectsに登録**
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO prospects (company_name, corporate_number, industry, website_url, email, contact_form_url, sns_accounts) VALUES (...);"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO prospects (company_name, corporate_number, industry, website_url, email, contact_form_url, sns_accounts) VALUES (?, ?, ?, ?, ?, ?, ?)" "<company_name>" "<corporate_number>" "<industry>" "<website_url>" "<email>" "<contact_form_url>" "<sns_accounts_json>"
 ```
 
 **Step 3: プロジェクトとの紐付けを登録**
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (...);"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (?, ?, ?, ?)" "<project_id>" "<prospect_id>" "<match_reason>" "<priority>"
 ```
 
 `project_prospects` には UNIQUE(project_id, prospect_id) 制約があるため、同じプロジェクトへの重複紐付けは自動で弾かれる。

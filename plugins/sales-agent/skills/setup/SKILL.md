@@ -23,7 +23,7 @@ allowed-tools:
 `data.db` がプロジェクトルートに存在しない場合のみ、初期化スクリプトを実行する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/init-db.sh
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
 ```
 
 既にDBが存在する場合はスキップし、その旨を報告する。
@@ -43,7 +43,7 @@ mkdir -p <project-directory-name>
 DBの `projects` テーブルにプロジェクトを登録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT OR IGNORE INTO projects (name, directory) VALUES ('<name>', '<directory>');"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (name, directory) VALUES (?, ?)" "<name>" "<directory>"
 ```
 
 ### 5. 完了報告

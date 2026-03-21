@@ -71,7 +71,7 @@ allowed-tools:
 - 反応パターンに基づいてprospectsの優先度を更新
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET priority = <new_priority>, updated_at = datetime('now') WHERE project_id = <id> AND prospect_id IN (SELECT id FROM prospects WHERE industry = '<industry>') AND status = 'new';"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET priority = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id IN (SELECT id FROM prospects WHERE industry = ?) AND status = 'new'" "<new_priority>" "<project_id>" "<industry>"
 ```
 
 ### 5. 評価記録の保存
@@ -79,7 +79,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET pri
 evaluationsテーブルに記録する:
 
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT INTO evaluations (project_id, metrics, findings, improvements) VALUES (<id>, '<metrics_json>', '<findings>', '<improvements_json>');"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO evaluations (project_id, metrics, findings, improvements) VALUES (?, ?, ?, ?)" "<project_id>" "<metrics_json>" "<findings>" "<improvements_json>"
 ```
 
 ### 6. 結果レポート
