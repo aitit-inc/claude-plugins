@@ -20,11 +20,12 @@ Exit code: 0 = match found, 1 = no match, 2 = error
 
 from __future__ import annotations
 
+import argparse
 import json
 import re
 import sys
 
-from sales_db import DuplicateMatch, error_exit, get_connection
+from sales_db import DuplicateMatch, get_connection
 
 
 def extract_domain(url: str) -> str:
@@ -137,73 +138,40 @@ def check_website_domain(conn: object, url: str) -> list[DuplicateMatch]:
     ]
 
 
-def parse_args(argv: list[str]) -> tuple[str, dict[str, str | tuple[str, str]]]:
-    """コマンドライン引数をパースする。"""
-    if len(argv) < 2:
-        error_exit(
-            "Usage: check_duplicate.py <db_path> "
-            "[--email <email>] [--sns <key> <value>] "
-            "[--corporate-number <number>] [--company-name <name>] "
-            "[--website-url <url>]",
-            code=2,
-        )
-
-    db_path = argv[1]
-    opts: dict[str, str | tuple[str, str]] = {}
-    i = 2
-    while i < len(argv):
-        arg = argv[i]
-        if arg == "--email":
-            opts["email"] = argv[i + 1]
-            i += 2
-        elif arg == "--sns":
-            opts["sns"] = (argv[i + 1], argv[i + 2])
-            i += 3
-        elif arg == "--corporate-number":
-            opts["corporate_number"] = argv[i + 1]
-            i += 2
-        elif arg == "--company-name":
-            opts["company_name"] = argv[i + 1]
-            i += 2
-        elif arg == "--website-url":
-            opts["website_url"] = argv[i + 1]
-            i += 2
-        else:
-            error_exit(f"Unknown option: {arg}", code=2)
-    return db_path, opts
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="営業先の重複チェック。確実な判定から順にチェックし、マッチした候補を JSON で出力する。",
+    )
+    parser.add_argument("db_path", help="SQLite データベースのパス")
+    parser.add_argument("--email", help="メールアドレスで完全一致チェック")
+    parser.add_argument("--sns", nargs=2, metavar=("KEY", "VALUE"), help="SNS アカウントで完全一致チェック（例: --sns x @account）")
+    parser.add_argument("--corporate-number", help="法人番号で完全一致チェック")
+    parser.add_argument("--company-name", help="名称で完全一致チェック")
+    parser.add_argument("--website-url", help="ウェブサイトのドメインで一致チェック")
+    return parser
 
 
 def main() -> None:
-    db_path, opts = parse_args(sys.argv)
+    args = build_parser().parse_args()
 
-    conn = get_connection(db_path)
+    conn = get_connection(args.db_path)
     matches: list[DuplicateMatch] = []
 
     try:
-        if "email" in opts:
-            val = opts["email"]
-            assert isinstance(val, str)
-            matches.extend(check_email(conn, val))
+        if args.email:
+            matches.extend(check_email(conn, args.email))
 
-        if "sns" in opts:
-            val = opts["sns"]
-            assert isinstance(val, tuple)
-            matches.extend(check_sns(conn, val[0], val[1]))
+        if args.sns:
+            matches.extend(check_sns(conn, args.sns[0], args.sns[1]))
 
-        if "corporate_number" in opts:
-            val = opts["corporate_number"]
-            assert isinstance(val, str)
-            matches.extend(check_corporate_number(conn, val))
+        if args.corporate_number:
+            matches.extend(check_corporate_number(conn, args.corporate_number))
 
-        if "company_name" in opts:
-            val = opts["company_name"]
-            assert isinstance(val, str)
-            matches.extend(check_company_name(conn, val))
+        if args.company_name:
+            matches.extend(check_company_name(conn, args.company_name))
 
-        if "website_url" in opts:
-            val = opts["website_url"]
-            assert isinstance(val, str)
-            matches.extend(check_website_domain(conn, val))
+        if args.website_url:
+            matches.extend(check_website_domain(conn, args.website_url))
     finally:
         conn.close()
 
