@@ -16,7 +16,9 @@ allowed-tools:
 
 ### 1. 引数の確認
 
-引数としてプロジェクトディレクトリ名を受け取る（例: `product-a-sales`）。引数がない場合はエラーを返す。
+- プロジェクトディレクトリ名: `$0`（必須。例: `product-a-sales`）
+
+`$0` が空の場合はエラーを返す。
 
 ### 2. データベース初期化
 
@@ -33,7 +35,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
 プロジェクトルート直下に指定名のディレクトリを作成する:
 
 ```bash
-mkdir -p <project-directory-name>
+mkdir -p $0
 ```
 
 既に存在する場合はスキップ。
@@ -43,7 +45,7 @@ mkdir -p <project-directory-name>
 DBの `projects` テーブルにプロジェクトを登録する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (name, directory) VALUES (?, ?)" "<name>" "<directory>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (name, directory) VALUES (?, ?)" "$0" "./$0"
 ```
 
 ### 5. 完了報告

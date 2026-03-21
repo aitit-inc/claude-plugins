@@ -18,9 +18,11 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 
 ### 1. 戦略ドキュメント読み込み
 
-プロジェクトディレクトリから以下を読み込む:
-- `<project-dir>/BUSINESS.md`
-- `<project-dir>/SALES_STRATEGY.md`
+- プロジェクトディレクトリ名: `$0`（必須）
+
+以下を読み込む:
+- `$0/BUSINESS.md`
+- `$0/SALES_STRATEGY.md`
 
 存在しない場合は `/strategy` の実行を案内する。
 

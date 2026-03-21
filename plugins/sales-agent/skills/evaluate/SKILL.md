@@ -18,14 +18,16 @@ allowed-tools:
 
 ### 1. データ収集
 
-`references/evaluation-queries.sql` のクエリテンプレートを使い、`<project_id>` を実際のIDに置換して順次実行する。各クエリの結果を分析用に保持する。
+- プロジェクトディレクトリ名: `$0`（必須）
+
+`references/evaluation-queries.sql` のクエリテンプレートを使い、`$0` のプロジェクトIDを取得して置換し、順次実行する。各クエリの結果を分析用に保持する。
 
 ### 2. 既存戦略の読み込み
 
-プロジェクトディレクトリから以下を読み込む:
-- `BUSINESS.md`
-- `SALES_STRATEGY.md`
-- `RESULTS_REPORT.md`（存在する場合）
+以下を読み込む:
+- `$0/BUSINESS.md`
+- `$0/SALES_STRATEGY.md`
+- `$0/RESULTS_REPORT.md`（存在する場合）
 - 過去の `evaluations` テーブルの記録
 
 ### 3. 多角的分析

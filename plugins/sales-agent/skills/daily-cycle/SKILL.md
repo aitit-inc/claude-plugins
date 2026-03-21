@@ -30,17 +30,17 @@ allowed-tools:
 
 ## 引数
 
-- 第1引数: プロジェクトディレクトリ名（必須）
-- 第2引数: outbound 件数（省略時: 30）
+- プロジェクトディレクトリ名: `$0`（必須）
+- outbound 件数: `$1`（省略時: 30）
 
 ## 実行手順
 
 ### 1. 準備
 
-プロジェクトディレクトリの存在と、DBにプロジェクトが登録済みであることを確認する。
+`$0` ディレクトリの存在と、DBにプロジェクトが登録済みであることを確認する。
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT id FROM projects WHERE name = ?" "<project-dir>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT id FROM projects WHERE name = ?" "$0"
 ```
 
 ### 2. check-results を実行

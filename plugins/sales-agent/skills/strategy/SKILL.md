@@ -19,11 +19,13 @@ allowed-tools:
 
 ### 1. プロジェクト確認
 
-引数でプロジェクトディレクトリ名を受け取る。該当ディレクトリが存在することを確認する。存在しない場合は `/setup` の実行を案内する。
+- プロジェクトディレクトリ名: `$0`（必須）
+
+`$0` ディレクトリが存在することを確認する。存在しない場合は `/setup` の実行を案内する。
 
 ### 2. 既存ファイル確認
 
-`<project-dir>/BUSINESS.md` と `<project-dir>/SALES_STRATEGY.md` の存在を確認する。既にある場合は内容を読み込み、更新モードで動作する。
+`$0/BUSINESS.md` と `$0/SALES_STRATEGY.md` の存在を確認する。既にある場合は内容を読み込み、更新モードで動作する。
 
 ### 3. 情報収集
 
@@ -47,11 +49,11 @@ AskUserQuestionを使い、以下の情報を対話的に収集する。ユー�
 
 ### 5. BUSINESS.md 生成
 
-`references/business-template.md` のテンプレートに従って `<project-dir>/BUSINESS.md` を生成する。
+`references/business-template.md` のテンプレートに従って `$0/BUSINESS.md` を生成する。
 
 ### 6. SALES_STRATEGY.md 生成
 
-`references/strategy-template.md` のテンプレートに従って `<project-dir>/SALES_STRATEGY.md` を生成する。
+`references/strategy-template.md` のテンプレートに従って `$0/SALES_STRATEGY.md` を生成する。
 
 ### 7. 完了報告
 
