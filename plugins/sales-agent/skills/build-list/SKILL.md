@@ -43,12 +43,13 @@ WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収
 
 各営業先について以下の情報を可能な限り取得する:
 - 名称（企業名、学校名、法人名等）
+- 事業概要（何をしている組織か。公式サイトから1-2文で要約）
 - 業種・分野
 - 公式サイトURL
 - メールアドレス（問い合わせ先、代表メール等）
 - 問い合わせフォームURL
 - SNSアカウント（Twitter/X、LinkedIn、Facebook等）
-- マッチ理由（なぜこの営業先がターゲットとして適切か）
+- マッチ理由（なぜこの営業先がターゲットとして適切か。相手の課題・ニーズも含めて記述）
 
 **探索のコツ:**
 - 1つの検索クエリで見つかる営業先は限られるので、多角的にクエリを変えて探索する
@@ -92,7 +93,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_duplicate.py data.db \
 **Step 2: 新規の場合、prospectsに登録**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO prospects (company_name, corporate_number, industry, website_url, email, contact_form_url, sns_accounts) VALUES (?, ?, ?, ?, ?, ?, ?)" "<company_name>" "<corporate_number>" "<industry>" "<website_url>" "<email>" "<contact_form_url>" "<sns_accounts_json>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO prospects (company_name, corporate_number, overview, industry, website_url, email, contact_form_url, sns_accounts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)" "<company_name>" "<corporate_number>" "<overview>" "<industry>" "<website_url>" "<email>" "<contact_form_url>" "<sns_accounts_json>"
 ```
 
 **Step 3: プロジェクトとの紐付けを登録**

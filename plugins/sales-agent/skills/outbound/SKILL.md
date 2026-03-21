@@ -34,7 +34,7 @@ allowed-tools:
 未アプローチの営業先リストをDBから取得する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "<project_id>" "<件数>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "<project_id>" "<件数>"
 ```
 
 件数の指定がない場合は全件を対象とする。

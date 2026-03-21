@@ -26,6 +26,7 @@ class Prospect(TypedDict, total=False):
     id: int
     company_name: str
     corporate_number: str | None
+    overview: str | None
     industry: str | None
     website_url: str | None
     email: str | None

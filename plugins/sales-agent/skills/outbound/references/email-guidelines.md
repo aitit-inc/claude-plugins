@@ -2,7 +2,7 @@
 
 ## 基本方針
 
-SALES_STRATEGY.mdの「メッセージング」セクションを基に、各営業先の `match_reason` に合わせてカスタマイズする。
+SALES_STRATEGY.mdの「メッセージング」セクションを基に、各営業先の `overview`（事業概要）と `match_reason`（マッチ理由・課題）に合わせてカスタマイズする。
 
 ## 件名
 

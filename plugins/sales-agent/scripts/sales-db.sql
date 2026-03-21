@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_name TEXT NOT NULL,
     corporate_number TEXT,  -- 法人番号（13桁）。わかる場合のみ
+    overview TEXT,
     industry TEXT,
     website_url TEXT,
     email TEXT,
@@ -27,7 +28,7 @@ CREATE TABLE IF NOT EXISTS project_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     prospect_id INTEGER NOT NULL,
-    match_reason TEXT,  -- なぜこの営業先がこのプロジェクトのターゲットとして適切か
+    match_reason TEXT,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
     priority INTEGER DEFAULT 3,  -- 1=最高 5=最低
     status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
