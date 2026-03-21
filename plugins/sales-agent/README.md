@@ -40,6 +40,7 @@ Claude Code 内で以下を実行:
 | `/outbound <dir>` | メール・フォーム・SNS DMでアプローチ |
 | `/check-results <dir>` | 反応を確認・記録 |
 | `/evaluate <dir>` | データ分析に基づいてPDCA改善 |
+| `/daily-cycle <dir> [件数]` | 日次サイクル自動実行（check-results → outbound + build-list） |
 
 `<dir>` は製品/サービスごとのサブディレクトリ名（例: `product-a-sales`）。
 データベース（`data.db`）はプロジェクトルートで共有、ナレッジファイル類はサブディレクトリに分離される。
@@ -55,7 +56,13 @@ Claude Code 内で以下を実行:
 /evaluate my-product        # 結果を分析して戦略を自動改善
 ```
 
-`/build-list` → `/outbound` → `/check-results` → `/evaluate` のサイクルを繰り返すことで営業活動が改善されていく。
+初回セットアップ後は `/daily-cycle` で日々の営業活動を自動実行できる:
+
+```
+/daily-cycle my-product      # 毎日実行: 返信確認 → 30件アプローチ → リスト補充
+/daily-cycle my-product 50   # 件数を指定
+/evaluate my-product         # 週1程度で戦略改善
+```
 
 ---
 
