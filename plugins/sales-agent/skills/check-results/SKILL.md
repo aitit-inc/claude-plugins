@@ -22,9 +22,9 @@ allowed-tools:
 
 ## 実行手順
 
-### 1. アプローチ済み企業の取得
+### 1. アプローチ済み営業先の取得
 
-ステータスが `contacted` の企業リストとアプローチ履歴を取得する:
+ステータスが `contacted` の営業先リストとアプローチ履歴を取得する:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = <id> AND pp.status = 'contacted' ORDER BY o.sent_at ASC;"
@@ -34,14 +34,14 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.e
 
 Gmail MCPを使って、送信先からの返信を確認する。
 
-各アプローチ済み企業のメールアドレスについて:
+各アプローチ済み営業先のメールアドレスについて:
 1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:<email>` を検索
 2. アプローチ日時以降の返信があれば `mcp__claude_ai_Gmail__gmail_read_message` で内容を確認
 3. 返信内容のセンチメント（positive/neutral/negative）と種別（reply/auto_reply/bounce/meeting_request/rejection等）を判定
 
 ### 3. SNS反応の確認
 
-SNSでDMを送った企業について、claude-in-chromeで返信を確認する。
+SNSでDMを送った営業先について、claude-in-chromeで返信を確認する。
 
 1. SNSアカウントのDM/メッセージ画面を開く
 2. 返信の有無を確認
@@ -77,8 +77,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE prospects SET do_not_cont
 ### 5. 結果レポート
 
 以下を報告する:
-- チェックした企業数
-- 反応があった企業数と内訳（ポジティブ/ニュートラル/ネガティブ）
+- チェックした営業先数
+- 反応があった営業先数と内訳（ポジティブ/ニュートラル/ネガティブ）
 - 反応率（反応数 / アプローチ数）
 - 注目すべき返信の要約
 - 次のステップとして `/evaluate` の実行を案内する

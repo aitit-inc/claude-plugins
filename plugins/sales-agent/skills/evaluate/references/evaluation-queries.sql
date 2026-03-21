@@ -38,7 +38,7 @@ LEFT JOIN responses r ON o.id = r.outreach_log_id
 WHERE pp.project_id = <project_id>
 GROUP BY pp.priority;
 
--- ステータス別企業数
+-- ステータス別営業先数
 SELECT status, COUNT(*) as count
 FROM project_prospects
 WHERE project_id = <project_id>

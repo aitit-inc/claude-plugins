@@ -1,6 +1,6 @@
 ---
 name: outbound
-description: "This skill should be used when the user asks to \"メールを送って\", \"営業をかけて\", \"アプローチして\", \"企業に連絡して\", \"アウトバウンドを実行して\", or wants to execute outbound sales. 営業リストの企業に対してメール送付・フォーム入力・SNS DMを自動で行う。件数指定も可能。"
+description: "This skill should be used when the user asks to \"メールを送って\", \"営業をかけて\", \"アプローチして\", \"営業先に連絡して\", \"アウトバウンドを実行して\", or wants to execute outbound sales. 営業リストの営業先に対してメール送付・フォーム入力・SNS DMを自動で行う。件数指定も可能。"
 argument-hint: "<project-directory-name> [件数]"
 allowed-tools:
   - Bash
@@ -23,7 +23,7 @@ allowed-tools:
 
 # Outbound - アウトバウンド営業実行
 
-営業リストの企業に対して、メール・問い合わせフォーム・SNS DMで順次アプローチするスキル。全自動で実行する。
+営業リストの営業先に対して、メール・問い合わせフォーム・SNS DMで順次アプローチするスキル。全自動で実行する。
 
 ## 実行手順
 
@@ -31,7 +31,7 @@ allowed-tools:
 
 プロジェクトディレクトリのBUSINESS.mdとSALES_STRATEGY.mdを読み込み、メッセージングの方針を把握する。
 
-未アプローチの企業リストをDBから取得する:
+未アプローチの営業先リストをDBから取得する:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = <id> AND pp.status = 'new' AND p.do_not_contact = 0 ORDER BY pp.priority ASC, p.id ASC LIMIT <件数>;"
@@ -39,15 +39,15 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "SELECT p.id, p.company_name, p.e
 
 件数の指定がない場合は全件を対象とする。
 
-### 2. 各企業へのアプローチ
+### 2. 各営業先へのアプローチ
 
-優先度順に、各企業に対して利用可能なチャネルで順次アプローチする。チャネルの優先順位:
+優先度順に、各営業先に対して利用可能なチャネルで順次アプローチする。チャネルの優先順位:
 
 1. **メール** — メールアドレスがある場合
 2. **問い合わせフォーム** — フォームURLがある場合
 3. **SNS DM** — SNSアカウントがある場合
 
-1社につき、利用可能なチャネル全てでアプローチする必要はない。最も効果的な1チャネルで十分。ただし、メールアドレスがある場合はメールを優先する。
+1つの営業先につき、利用可能なチャネル全てでアプローチする必要はない。最も効果的な1チャネルで十分。ただし、メールアドレスがある場合はメールを優先する。
 
 ### 3. メール送信
 
@@ -82,7 +82,7 @@ claude-in-chromeを使用してSNSでDMを送る。
 
 ### 6. ステータス更新
 
-アプローチ完了した企業のステータスを更新する:
+アプローチ完了した営業先のステータスを更新する:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = <project_id> AND prospect_id = <prospect_id>;"
@@ -91,7 +91,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "UPDATE project_prospects SET sta
 ### 7. 結果レポート
 
 以下を報告する:
-- アプローチした企業数
+- アプローチした営業先数
 - チャネル別の内訳（メール: N件、フォーム: N件、SNS: N件）
 - 失敗した件数と理由
 - 次のステップとして `/check-results` の実行を案内する

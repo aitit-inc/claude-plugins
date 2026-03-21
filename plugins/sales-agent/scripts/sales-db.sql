@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS project_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     prospect_id INTEGER NOT NULL,
-    match_reason TEXT,  -- なぜこの企業がこのプロジェクトのターゲットとして適切か
+    match_reason TEXT,  -- なぜこの営業先がこのプロジェクトのターゲットとして適切か
     priority INTEGER DEFAULT 3,  -- 1=最高 5=最低
     status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive
     created_at TEXT NOT NULL DEFAULT (datetime('now')),

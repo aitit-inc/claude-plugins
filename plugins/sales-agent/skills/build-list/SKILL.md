@@ -1,6 +1,6 @@
 ---
 name: build-list
-description: "This skill should be used when the user asks to \"営業先リストを作って\", \"企業を探して\", \"見込み客を集めて\", \"ターゲット企業を探索して\", or wants to build a prospect list. BUSINESS.mdとSALES_STRATEGY.mdに基づきWeb探索で営業先候補を収集しDBに登録する。"
+description: "This skill should be used when the user asks to \"営業先リストを作って\", \"営業先を探して\", \"見込み客を集めて\", \"ターゲットを探索して\", or wants to build a prospect list. BUSINESS.mdとSALES_STRATEGY.mdに基づきWeb探索で営業先候補を収集しDBに登録する。"
 argument-hint: "<project-directory-name>"
 allowed-tools:
   - Bash
@@ -28,36 +28,37 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 
 SALES_STRATEGY.mdの「検索キーワード」「ターゲット」セクションを基に、複数の検索クエリを策定する。
 
-検索クエリの種類:
-- ターゲット業種 + 地域での企業検索
-- 業界団体・協会のメンバーリスト
-- 業界メディア・ニュースサイトでの企業名収集
-- 展示会・イベントの出展企業リスト
+検索クエリの種類（ターゲットの種別に応じて適切なものを選ぶ）:
+- ターゲット業種 + 地域での検索
+- 業界団体・協会・連盟のメンバーリスト
+- 業界メディア・ニュースサイトでの営業先収集
+- 展示会・イベントの出展者リスト
 - 競合のクライアント事例
-- 求人サイトでのターゲット企業探索
+- 求人サイトでのターゲット探索
+- 学校・法人の一覧サイトや公的データベース
 
 ### 3. Web探索の実行
 
-WebSearchとWebFetchを組み合わせて、片っ端から企業情報を収集する。
+WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収集する。
 
-各企業について以下の情報を可能な限り取得する:
-- 企業名
-- 業種
+各営業先について以下の情報を可能な限り取得する:
+- 名称（企業名、学校名、法人名等）
+- 業種・分野
 - 公式サイトURL
 - メールアドレス（問い合わせ先、代表メール等）
 - 問い合わせフォームURL
 - SNSアカウント（Twitter/X、LinkedIn、Facebook等）
-- マッチ理由（なぜこの企業がターゲットとして適切か）
+- マッチ理由（なぜこの営業先がターゲットとして適切か）
 
 **探索のコツ:**
-- 1つの検索クエリで見つかる企業は限られるので、多角的にクエリを変えて探索する
-- 企業の公式サイトにアクセスして、問い合わせ先やフォームURLを取得する
-- 業界ポータルサイトや企業一覧ページを活用する
+- 1つの検索クエリで見つかる営業先は限られるので、多角的にクエリを変えて探索する
+- 公式サイトにアクセスして、問い合わせ先やフォームURLを取得する
+- ポータルサイトや一覧ページを活用する
 - 上限は設けず、見つかる限り収集する
 
 ### 4. 優先度の判定
 
-各企業にSALES_STRATEGY.mdの基準で優先度（1-5）を付与する:
+各営業先にSALES_STRATEGY.mdの基準で優先度（1-5）を付与する:
 - 1: 最有力（ターゲットに完全合致、ニーズが明確）
 - 2: 有力（ターゲットに概ね合致）
 - 3: 通常（ターゲット範囲内）
@@ -66,11 +67,11 @@ WebSearchとWebFetchを組み合わせて、片っ端から企業情報を収集
 
 ### 5. データベース登録
 
-収集した企業情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず重複チェックを行い、既存なら既存レコードを使い、新規なら登録する。
+収集した営業先情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず重複チェックを行い、既存なら既存レコードを使い、新規なら登録する。
 
 **Step 1: 重複チェック**
 
-各企業について、取得できた情報をすべて渡してチェックする:
+各営業先について、取得できた情報をすべて渡してチェックする:
 
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
@@ -85,7 +86,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/check-duplicate.sh <db_path> \
 
 結果の判定:
 - `EXACT_MATCH` → 既存の prospect_id を使う。新規登録しない
-- `POSSIBLE_MATCH` → 既存レコードの詳細（company_name, website_url, email 等）を確認し、同一企業か別企業かを判断する。同一なら既存IDを使い、別企業なら新規登録する
+- `POSSIBLE_MATCH` → 既存レコードの詳細（company_name, website_url, email 等）を確認し、同一の営業先か別の営業先かを判断する。同一なら既存IDを使い、別なら新規登録する
 - マッチなし（exit code 1） → 新規登録する
 
 **Step 2: 新規の場合、prospectsに登録**
@@ -105,7 +106,7 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/query-db.sh "INSERT OR IGNORE INTO project_pr
 ### 6. 結果レポート
 
 以下を報告する:
-- 収集した企業数（優先度別の内訳）
+- 収集した営業先数（優先度別の内訳）
 - チャネル別のカバレッジ（メールあり: N件、フォームあり: N件、SNSあり: N件）
 - 次のステップとして `/outbound` の実行を案内する
 

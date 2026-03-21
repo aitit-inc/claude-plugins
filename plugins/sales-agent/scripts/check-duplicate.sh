@@ -87,7 +87,7 @@ if [ -n "$COMPANY_NAME" ]; then
     RESULT=$(sqlite3 -separator '|' "$DB_PATH" "SELECT id, company_name FROM prospects WHERE company_name = '${ESCAPED_NAME}';")
     if [ -n "$RESULT" ]; then
         while IFS='|' read -r pid pname; do
-            echo "EXACT_MATCH|${pid}|${pname}|企業名完全一致"
+            echo "EXACT_MATCH|${pid}|${pname}|名称完全一致"
             FOUND=1
         done <<< "$RESULT"
     fi
