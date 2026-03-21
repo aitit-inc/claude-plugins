@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL UNIQUE,
-    directory TEXT NOT NULL,
+    directory TEXT NOT NULL UNIQUE,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -11,10 +11,10 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     company_name TEXT NOT NULL,
-    corporate_number TEXT,  -- 法人番号（13桁）。わかる場合のみ
-    overview TEXT,
+    corporate_number TEXT UNIQUE,  -- 法人番号（13桁）。わかる場合のみ
+    overview TEXT NOT NULL,
     industry TEXT,
-    website_url TEXT,
+    website_url TEXT NOT NULL,
     email TEXT,
     contact_form_url TEXT,
     sns_accounts TEXT,  -- JSON: {"twitter": "...", "linkedin": "...", ...}
@@ -28,8 +28,8 @@ CREATE TABLE IF NOT EXISTS project_prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER NOT NULL,
     prospect_id INTEGER NOT NULL,
-    match_reason TEXT,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
-    priority INTEGER DEFAULT 3,  -- 1=最高 5=最低
+    match_reason TEXT NOT NULL,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
+    priority INTEGER NOT NULL DEFAULT 3,  -- 1=最高 5=最低
     status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS outreach_logs (
     prospect_id INTEGER NOT NULL,
     channel TEXT NOT NULL,  -- email, form, sns_twitter, sns_linkedin, etc.
     subject TEXT,
-    body TEXT,
+    body TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'sent',  -- sent, failed
     sent_at TEXT NOT NULL DEFAULT (datetime('now')),
     error_message TEXT,
@@ -56,9 +56,9 @@ CREATE TABLE IF NOT EXISTS responses (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     outreach_log_id INTEGER NOT NULL,
     channel TEXT NOT NULL,
-    content TEXT,
-    sentiment TEXT,  -- positive, neutral, negative
-    response_type TEXT,  -- reply, auto_reply, bounce, meeting_request, rejection, etc.
+    content TEXT NOT NULL,
+    sentiment TEXT NOT NULL,  -- positive, neutral, negative
+    response_type TEXT NOT NULL,  -- reply, auto_reply, bounce, meeting_request, rejection, etc.
     received_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (outreach_log_id) REFERENCES outreach_logs(id)
 );

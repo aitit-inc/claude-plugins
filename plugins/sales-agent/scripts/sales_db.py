@@ -26,9 +26,9 @@ class Prospect(TypedDict, total=False):
     id: int
     company_name: str
     corporate_number: str | None
-    overview: str | None
+    overview: str
     industry: str | None
-    website_url: str | None
+    website_url: str
     email: str | None
     contact_form_url: str | None
     sns_accounts: str | None  # JSON string
@@ -42,7 +42,7 @@ class ProjectProspect(TypedDict, total=False):
     id: int
     project_id: int
     prospect_id: int
-    match_reason: str | None
+    match_reason: str
     priority: int
     status: str
     created_at: str
@@ -55,7 +55,7 @@ class OutreachLog(TypedDict, total=False):
     prospect_id: int
     channel: str
     subject: str | None
-    body: str | None
+    body: str
     status: str
     sent_at: str
     error_message: str | None
@@ -65,9 +65,9 @@ class Response(TypedDict, total=False):
     id: int
     outreach_log_id: int
     channel: str
-    content: str | None
-    sentiment: str | None
-    response_type: str | None
+    content: str
+    sentiment: str
+    response_type: str
     received_at: str
 
 
