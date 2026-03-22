@@ -7,9 +7,6 @@ allowed-tools:
   - Read
   - Write
   - WebFetch
-  - mcp__claude_ai_Gmail__gmail_create_draft
-  - mcp__claude_ai_Gmail__gmail_search_messages
-  - mcp__claude_ai_Gmail__gmail_read_message
   - mcp__claude_in_chrome__tabs_context_mcp
   - mcp__claude_in_chrome__tabs_create_mcp
   - mcp__claude_in_chrome__navigate
@@ -56,9 +53,21 @@ SALES_STRATEGY.mdの「営業チャネル」セクションに記載されたチ
 
 ### 3. メール送信
 
-Gmail MCPを使用してメールを送信する。`references/email-guidelines.md` のガイドラインに従ってメールを作成する。
+`references/email-guidelines.md` のガイドラインに従ってメールを作成する。SALES_STRATEGY.mdの「送信者情報」セクションから送信元メールアドレスと署名を取得する。
 
-`mcp__claude_ai_Gmail__gmail_create_draft` でドラフトを作成し、送信する。
+`gog send` コマンドで送信する:
+
+```bash
+gog send --account "<送信元メールアドレス>" --to "<宛先>" --subject "<件名>" --body "<本文>"
+```
+
+**注意:**
+- `--body` に渡す本文は署名を含めた完全な内容にする
+- 本文が長い場合は `--body-file` でファイルから読み込む:
+  ```bash
+  echo "<本文>" > /tmp/email_body.txt && gog send --account "<送信元メールアドレス>" --to "<宛先>" --subject "<件名>" --body-file /tmp/email_body.txt
+  ```
+- Gmail MCP（`gmail_create_draft`）はドラフト作成のみで送信不可。必ず `gog send` を使うこと
 
 送信後、outreach_logsに記録する:
 
