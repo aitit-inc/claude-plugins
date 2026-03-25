@@ -56,7 +56,7 @@ Agent toolでサブエージェントを起動し、PDCA評価を実行する。
 未アプローチ（status = 'new'）の営業先数を確認する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as count FROM project_prospects pp JOIN prospects p ON pp.prospect_id = p.id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND (p.email IS NOT NULL OR p.contact_form_url IS NOT NULL OR p.sns_accounts IS NOT NULL)" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as count FROM project_prospects pp JOIN prospects p ON pp.prospect_id = p.id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}'))" "$0"
 ```
 
 ### 5. outbound（サブエージェント × バッチ分割）

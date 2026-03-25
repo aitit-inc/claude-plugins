@@ -34,7 +34,7 @@ allowed-tools:
 未アプローチの営業先リストをDBから取得する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND (p.email IS NOT NULL OR p.contact_form_url IS NOT NULL OR p.sns_accounts IS NOT NULL) ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "$0" "$1"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')) ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "$0" "$1"
 ```
 
 件数の指定がない場合は全件を対象とする。
@@ -55,31 +55,42 @@ SALES_STRATEGY.mdの「営業チャネル」セクションに記載されたチ
 
 `references/email-guidelines.md` のガイドラインに従ってメールを作成する。SALES_STRATEGY.mdの「送信者情報」セクションから送信元メールアドレスと署名を取得する。
 
-`gog send` コマンドで送信する:
+`send_and_log.py` でメール送信+ログ記録+ステータス更新を一括で行う:
 
 ```bash
-gog send --account "<送信元メールアドレス>" --to "<宛先>" --subject "<件名>" --body "<本文>"
+echo "<本文（署名含む）>" > /tmp/email_body.txt
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$0" \
+  --prospect-id <prospect_id> \
+  --account "<送信元メールアドレス>" \
+  --to "<宛先>" \
+  --subject "<件名>" \
+  --body-file /tmp/email_body.txt
 ```
+
+本文が短い場合は `--body-file` の代わりに `--body "<本文>"` も可。
+
+**スクリプトの動作:**
+- gog send でメールを送信
+- 成功時: outreach_logs (status='sent') に記録し、project_prospects を 'contacted' に更新
+- 失敗時: outreach_logs (status='failed', error_message) に記録。ステータスは 'new' のまま維持
+- 出力: `{"status": "sent"|"failed", "outreach_log_id": N, "error_message": null|"..."}`
 
 **注意:**
-- `--body` に渡す本文は署名を含めた完全な内容にする
-- 本文が長い場合は `--body-file` でファイルから読み込む:
-  ```bash
-  echo "<本文>" > /tmp/email_body.txt && gog send --account "<送信元メールアドレス>" --to "<宛先>" --subject "<件名>" --body-file /tmp/email_body.txt
-  ```
-- Gmail MCP（`gmail_create_draft`）はドラフト作成のみで送信不可。必ず `gog send` を使うこと
-
-送信後、outreach_logsに記録する:
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, ?)" "$0" "<prospect_id>" "email" "<subject>" "<body>" "sent"
-```
+- `--body` / `--body-file` に渡す本文は署名を含めた完全な内容にする
+- Gmail MCP（`gmail_create_draft`）はドラフト作成のみで送信不可
+- 送信元エイリアスを指定する場合は `--from "<エイリアス>"` を追加
 
 ### 4. 問い合わせフォーム入力
 
 claude-in-chromeを使用してフォームに入力する。`references/form-filling.md` の手順に従う。
 
-送信後、outreach_logsに記録する（channel: 'form'）。
+送信後、outreach_logsに記録し、ステータスを更新する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, 'form', ?, ?, 'sent')" "$0" "<prospect_id>" "<subject>" "<body>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+```
 
 ### 5. SNS DM
 
@@ -92,13 +103,10 @@ claude-in-chromeを使用してSNSでDMを送る。
 
 **メッセージ:** SNS用に短く簡潔にする。SALES_STRATEGY.mdの「SNSメッセージ」セクションを参考に。
 
-送信後、outreach_logsに記録する（channel: 'sns_twitter' 等）。
-
-### 6. ステータス更新
-
-アプローチ完了した営業先のステータスを更新する:
+送信後、outreach_logsに記録し、ステータスを更新する:
 
 ```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "sns_twitter" "" "<body>"
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 
