@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""営業先の一括登録スクリプト
+
+Usage:
+  echo '<json_array>' | add_prospects.py <db_path> <project_id>
+
+stdin から営業先情報のJSON配列を受け取り、重複チェック→DB登録を一括で行う。
+prospects（営業先マスタ）と project_prospects（プロジェクト紐付け）を
+1トランザクションで登録する。
+
+JSON配列の各オブジェクト:
+  prospects用:
+    company_name (必須), overview (必須), website_url (必須),
+    corporate_number, industry, email, contact_form_url, sns_accounts
+  project_prospects用:
+    match_reason (必須), priority (省略時: 3)
+  特殊:
+    existing_prospect_id: 既存prospect_idを指定（prospect新規登録をスキップし紐付けのみ行う）
+
+Output: JSON
+  {
+    "added": N,
+    "duplicates": N,
+    "linked_existing": N,
+    "errors": N,
+    "details": [...]
+  }
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sqlite3
+import sys
+from typing import TypedDict, cast
+
+from check_duplicate import (  # pyright: ignore[reportMissingModuleSource]
+    check_company_name,
+    check_corporate_number,
+    check_email,
+    check_sns,
+    check_website_domain,
+)
+from sales_db import DuplicateMatch, error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
+
+
+# ---------------------------------------------------------------------------
+# 型定義
+# ---------------------------------------------------------------------------
+
+class ProspectEntry(TypedDict, total=False):
+    """入力JSON配列の各エントリ"""
+    # prospects 用
+    company_name: str
+    corporate_number: str
+    overview: str
+    industry: str
+    website_url: str
+    email: str
+    contact_form_url: str
+    sns_accounts: str | dict[str, str]
+    # project_prospects 用
+    match_reason: str
+    priority: int
+    # 既存prospect紐付け用
+    existing_prospect_id: int
+
+
+class PossibleMatch(TypedDict):
+    prospect_id: int
+    reason: str
+
+
+class EntryDetail(TypedDict, total=False):
+    """各エントリの処理結果"""
+    index: int
+    company_name: str
+    status: str  # "added" | "duplicate" | "linked_existing" | "error"
+    prospect_id: int
+    messages: list[str]
+    match_detail: str
+    project_linked: bool
+    possible_matches: list[PossibleMatch]
+
+
+class ResultSummary(TypedDict):
+    """一括登録の結果サマリー"""
+    added: int
+    duplicates: int
+    linked_existing: int
+    errors: int
+    details: list[EntryDetail]
+
+
+# ---------------------------------------------------------------------------
+# 定数
+# ---------------------------------------------------------------------------
+
+PROSPECT_REQUIRED = ("company_name", "overview", "website_url")
+PROJECT_PROSPECT_REQUIRED = ("match_reason",)
+
+
+# ---------------------------------------------------------------------------
+# 処理関数
+# ---------------------------------------------------------------------------
+
+def validate_entry(entry: ProspectEntry, index: int) -> list[str]:
+    """エントリのバリデーション。エラーメッセージのリストを返す。"""
+    errors: list[str] = []
+    # existing_prospect_id 指定時は prospect 側の必須チェックをスキップ
+    if not entry.get("existing_prospect_id"):
+        for field in PROSPECT_REQUIRED:
+            if not entry.get(field):
+                errors.append(f"[{index}] 必須フィールド '{field}' がありません")
+    for field in PROJECT_PROSPECT_REQUIRED:
+        if not entry.get(field):
+            errors.append(f"[{index}] 必須フィールド '{field}' がありません")
+    return errors
+
+
+def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[DuplicateMatch]:
+    """エントリの重複チェック。check_duplicate.py の関数を再利用。"""
+    matches: list[DuplicateMatch] = []
+
+    email = entry.get("email")
+    if email:
+        matches.extend(check_email(conn, email))
+
+    sns_raw = entry.get("sns_accounts")
+    if sns_raw is not None:
+        sns: dict[str, str] = {}
+        if isinstance(sns_raw, str):
+            try:
+                parsed: object = json.loads(sns_raw)
+                if isinstance(parsed, dict):
+                    sns = {str(k): str(v) for k, v in parsed.items()}
+            except json.JSONDecodeError:
+                pass
+        elif isinstance(sns_raw, dict):
+            sns = sns_raw
+        for key, value in sns.items():
+            if value:
+                matches.extend(check_sns(conn, key, value))
+
+    corporate_number = entry.get("corporate_number")
+    if corporate_number:
+        matches.extend(check_corporate_number(conn, corporate_number))
+
+    company_name = entry.get("company_name")
+    if company_name:
+        matches.extend(check_company_name(conn, company_name))
+
+    website_url = entry.get("website_url")
+    if website_url:
+        matches.extend(check_website_domain(conn, website_url))
+
+    # 重複排除（同じ prospect_id が複数段階でヒットする場合）
+    seen: set[int] = set()
+    unique: list[DuplicateMatch] = []
+    for m in matches:
+        if m["prospect_id"] not in seen:
+            seen.add(m["prospect_id"])
+            unique.append(m)
+
+    return unique
+
+
+def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
+    """prospects テーブルに1件挿入し、新しいIDを返す。"""
+    sns_val = entry.get("sns_accounts")
+    sns_str: str | None = None
+    if isinstance(sns_val, dict):
+        sns_str = json.dumps(sns_val, ensure_ascii=False)
+    elif isinstance(sns_val, str):
+        sns_str = sns_val
+
+    sql = (
+        "INSERT INTO prospects"
+        + " (company_name, corporate_number, overview, industry,"
+        + " website_url, email, contact_form_url, sns_accounts)"
+        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+    cursor = conn.execute(
+        sql,
+        (
+            entry.get("company_name"),
+            entry.get("corporate_number"),
+            entry.get("overview"),
+            entry.get("industry"),
+            entry.get("website_url"),
+            entry.get("email"),
+            entry.get("contact_form_url"),
+            sns_str,
+        ),
+    )
+    row_id = cursor.lastrowid
+    if row_id is None:
+        raise RuntimeError("INSERT後にlastrowidが取得できませんでした")
+    return row_id
+
+
+def link_project_prospect(
+    conn: sqlite3.Connection,
+    project_id: str,
+    prospect_id: int,
+    entry: ProspectEntry,
+) -> bool:
+    """project_prospects に紐付けを登録。既存の場合はFalseを返す。"""
+    sql = (
+        "INSERT OR IGNORE INTO project_prospects"
+        + " (project_id, prospect_id, match_reason, priority) VALUES (?, ?, ?, ?)"
+    )
+    cursor = conn.execute(
+        sql,
+        (project_id, prospect_id, entry.get("match_reason"), entry.get("priority", 3)),
+    )
+    return cursor.rowcount > 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description=(
+            "営業先の一括登録。stdin からJSON配列を読み取り、"
+            + "重複チェック→prospects登録→project_prospects紐付けを一括で行う。"
+        ),
+    )
+    _ = parser.add_argument("db_path", help="SQLite データベースのパス")
+    _ = parser.add_argument("project_id", help="プロジェクトID")
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+    db_path: str = args.db_path
+    project_id: str = args.project_id
+
+    try:
+        raw_data: object = json.load(sys.stdin)
+    except json.JSONDecodeError as e:
+        error_exit(f"JSON parse error: {e}")
+
+    if not isinstance(raw_data, list):
+        error_exit("入力はJSON配列である必要があります")
+
+    data = cast(list[ProspectEntry], raw_data)
+
+    if not data:
+        empty: ResultSummary = {
+            "added": 0, "duplicates": 0, "linked_existing": 0,
+            "errors": 0, "details": [],
+        }
+        print_json(empty)
+        return
+
+    conn = get_connection(db_path)
+
+    results: ResultSummary = {
+        "added": 0,
+        "duplicates": 0,
+        "linked_existing": 0,
+        "errors": 0,
+        "details": [],
+    }
+
+    try:
+        for i, entry in enumerate(data):
+            detail = EntryDetail(
+                index=i,
+                company_name=entry.get("company_name", ""),
+            )
+
+            # バリデーション
+            errors = validate_entry(entry, i)
+            if errors:
+                detail["status"] = "error"
+                detail["messages"] = errors
+                results["errors"] += 1
+                results["details"].append(detail)
+                continue
+
+            # --- existing_prospect_id が指定されている場合 ---
+            existing_pid = entry.get("existing_prospect_id")
+            if existing_pid is not None:
+                linked = link_project_prospect(conn, project_id, existing_pid, entry)
+                detail["status"] = "linked_existing"
+                detail["prospect_id"] = existing_pid
+                detail["project_linked"] = linked
+                results["linked_existing"] += 1
+                results["details"].append(detail)
+                continue
+
+            # --- 重複チェック ---
+            matches = find_duplicates(conn, entry)
+            exact = [m for m in matches if m["match_type"] == "EXACT_MATCH"]
+
+            if exact:
+                pid = exact[0]["prospect_id"]
+                detail["status"] = "duplicate"
+                detail["prospect_id"] = pid
+                detail["match_detail"] = exact[0]["reason"]
+                linked = link_project_prospect(conn, project_id, pid, entry)
+                detail["project_linked"] = linked
+                results["duplicates"] += 1
+                results["details"].append(detail)
+                continue
+
+            # POSSIBLE_MATCH は新規登録する（弱いシグナルのため）
+            # 呼び出し元が事前に判断済みの前提
+            if matches:
+                detail["possible_matches"] = [
+                    PossibleMatch(prospect_id=m["prospect_id"], reason=m["reason"])
+                    for m in matches
+                ]
+
+            # --- 新規登録 ---
+            try:
+                new_id = insert_prospect(conn, entry)
+                _ = link_project_prospect(conn, project_id, new_id, entry)
+                detail["status"] = "added"
+                detail["prospect_id"] = new_id
+                results["added"] += 1
+            except Exception as e:
+                detail["status"] = "error"
+                detail["messages"] = [str(e)]
+                results["errors"] += 1
+
+            results["details"].append(detail)
+
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        error_exit(f"Transaction failed: {e}")
+    finally:
+        conn.close()
+
+    print_json(results)
+
+
+if __name__ == "__main__":
+    main()

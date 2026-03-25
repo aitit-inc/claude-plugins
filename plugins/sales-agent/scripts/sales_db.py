@@ -7,7 +7,7 @@ import json
 import os
 import sqlite3
 import sys
-from typing import TypedDict
+from typing import NoReturn, TypedDict
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +124,7 @@ def print_json(data: object) -> None:
     print()
 
 
-def error_exit(message: str, code: int = 1) -> None:
+def error_exit(message: str, code: int = 1) -> NoReturn:
     """エラーメッセージを stderr に出力して終了する。"""
     print(f"ERROR: {message}", file=sys.stderr)
     sys.exit(code)

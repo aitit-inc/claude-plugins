@@ -108,41 +108,63 @@ WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収
 
 ### 6. データベース登録
 
-収集した営業先情報をDBに登録する。prospects は全プロジェクト共有のプールなので、まず重複チェックを行い、既存なら既存レコードを使い、新規なら登録する。
+収集した営業先情報を一括でDBに登録する。`add_prospects.py` が重複チェック→prospects登録→project_prospects紐付けをまとめて行う。
 
-**Step 1: 重複チェック**
-
-各営業先について、取得できた情報をすべて渡してチェックする:
+収集した営業先をJSON配列にまとめ、stdinで渡す:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_duplicate.py data.db \
-  --company-name "<name>" \
-  --email "<email>" \
-  --website-url "<url>" \
-  --sns twitter "<account>" \
-  --corporate-number "<number>"
+cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
+[
+  {
+    "company_name": "営業先名",
+    "overview": "事業概要（1-2文）",
+    "website_url": "https://example.com",
+    "industry": "業種",
+    "email": "info@example.com",
+    "contact_form_url": "https://example.com/contact",
+    "corporate_number": "1234567890123",
+    "sns_accounts": {"x": "@account"},
+    "match_reason": "ターゲットとして適切な理由（課題・ニーズ含む）",
+    "priority": 3
+  }
+]
+EOF
 ```
 
-引数は取得できたものだけ渡せばよい（すべて省略可能）。
+**各フィールド:**
+- 必須: `company_name`, `overview`, `website_url`, `match_reason`
+- 省略可: `industry`, `email`, `contact_form_url`, `corporate_number`, `sns_accounts`
+- `priority`: 省略時デフォルト3
 
-結果はJSON配列で返る。判定:
-- `EXACT_MATCH` → 既存の prospect_id を使う。新規登録しない
-- `POSSIBLE_MATCH` → 既存レコードの詳細（company_name, website_url, email 等）を確認し、同一の営業先か別の営業先かを判断する。同一なら既存IDを使い、別なら新規登録する
-- マッチなし（exit code 1） → 新規登録する
+**スクリプトの動作:**
+- 各エントリについて自動で重複チェックを行う（email→SNS→法人番号→名称→ドメインの順）
+- `EXACT_MATCH`: 既存prospect_idを使い、project_prospectsへの紐付けのみ行う
+- `POSSIBLE_MATCH`（ドメイン一致等）: 新規登録するが、出力に `possible_matches` として報告する
+- マッチなし: 新規登録する
+- 全件を1トランザクションで処理（途中エラーがあっても他のエントリは処理を継続）
 
-**Step 2: 新規の場合、prospectsに登録**
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO prospects (company_name, corporate_number, overview, industry, website_url, email, contact_form_url, sns_accounts) VALUES (?, ?, ?, ?, ?, ?, ?, ?)" "<company_name>" "<corporate_number>" "<overview>" "<industry>" "<website_url>" "<email>" "<contact_form_url>" "<sns_accounts_json>"
+**出力例:**
+```json
+{
+  "added": 5,
+  "duplicates": 2,
+  "linked_existing": 0,
+  "errors": 1,
+  "details": [...]
+}
 ```
 
-**Step 3: プロジェクトとの紐付けを登録**
+**既存のprospectを別プロジェクトに紐付けるだけの場合:**
 
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO project_prospects (project_id, prospect_id, match_reason, priority) VALUES (?, ?, ?, ?)" "$0" "<prospect_id>" "<match_reason>" "<priority>"
+`existing_prospect_id` を指定すると、prospect新規登録をスキップして紐付けのみ行う:
+```json
+{"existing_prospect_id": 42, "match_reason": "理由", "priority": 2}
 ```
 
-`project_prospects` には UNIQUE(project_id, prospect_id) 制約があるため、同じプロジェクトへの重複紐付けは自動で弾かれる。
+**登録のコツ:**
+- 5〜10件ずつまとめて登録する（JSON配列が大きくなりすぎないように）
+- 出力の `possible_matches` が報告された場合は、本当に重複でないか確認する
+- `errors` が出た場合は内容を確認し、修正して再登録する
 
 ### 7. 結果レポート
 
