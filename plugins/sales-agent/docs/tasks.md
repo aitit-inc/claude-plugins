@@ -200,3 +200,12 @@ outbound_improvements_idea.md を受けた対応:
 - B-1/B-2: email-guidelines.md のカスタマイズ指示強化（具体的な良い例・悪い例を追記）
 - C-1: build-list SKILL.md にフォームURL品質確認の指示追記（資料請求フォーム等を除外）
 - D-1（バッチ送信+ドライラン）は現段階では不要と判断し見送り
+
+## 完了: 30. 終わったらメール通知
+daily-cycleについては、完了したらメールで通知するようにする。
+AI-Tasks@surpassone.com
+に通知を送信すること。
+
+## 31. 設定値のようなことはmdじゃなくjsonへ？
+BUSINESS.md, SALES_STRATEGY.md は、これらはこれで良いが、
+例えば完了時の通知崎メールアドレスとか、他にも同類の設定値のような項目があれば、jsonかyamlか何かで管理した方が良いかも？
