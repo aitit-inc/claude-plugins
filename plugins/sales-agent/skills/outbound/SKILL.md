@@ -34,7 +34,7 @@ allowed-tools:
 未アプローチの営業先リストをDBから取得する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')) ORDER BY pp.priority ASC, p.id ASC LIMIT ?" "$0" "$1"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')) ORDER BY CASE WHEN p.email IS NOT NULL AND p.email != '' THEN 0 ELSE 1 END, CASE WHEN p.contact_form_url IS NOT NULL AND p.contact_form_url != '' THEN 0 ELSE 1 END, pp.priority ASC, p.id ASC LIMIT ?" "$0" "$1"
 ```
 
 件数の指定がない場合は全件を対象とする。
@@ -109,6 +109,24 @@ claude-in-chromeを使用してSNSでDMを送る。
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "sns_twitter" "" "<body>"
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
+
+### 6. アプローチ不可の営業先の処理
+
+アプローチに失敗した営業先のうち、**構造的な理由**で今後もアプローチ不可能と判断できる場合は `unreachable` に更新する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'unreachable', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+```
+
+**`unreachable` にすべきケース:**
+- メールアドレスが不正でバウンスした（恒久的なエラー）
+- SNSのDMが開放されていない
+- フォームがB2B問い合わせ用途でなかった
+- そもそも利用可能な連絡手段がなかった
+
+**`unreachable` にしないケース（`new` のまま維持）:**
+- 一時的なネットワークエラーやタイムアウト
+- gog send の認証エラーなどシステム側の問題
 
 ### 7. 結果レポート
 

@@ -58,7 +58,15 @@ SALES_STRATEGY.mdに日程調整サービスが記載されている場合、そ
 1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:<通知元アドレス> newer_than:1d` を検索
 2. ヒットがあれば内容を読み、通知本文に含まれる名前・メールアドレス・組織名をアプローチ済みリストと突き合わせる
 
-**3c. 突き合わせ（マッチング）**
+**3c. バウンスメールの検索**
+
+送信失敗（宛先不明、ドメイン不在等）を検出する:
+
+1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:mailer-daemon OR from:postmaster newer_than:4d` を検索
+2. ヒットがあれば `mcp__claude_ai_Gmail__gmail_read_message` で内容を確認
+3. バウンスしたメールアドレスをアプローチ済みリストと照合し、該当する営業先を特定する
+
+**3d. 突き合わせ（マッチング）**
 
 受信メールをアプローチ済み営業先と紐づける。以下の優先順位で照合する:
 1. **送信先アドレス完全一致**: 送った相手からの直接返信
