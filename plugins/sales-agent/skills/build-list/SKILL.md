@@ -6,15 +6,20 @@ allowed-tools:
   - Bash
   - Read
   - Write
+  - Agent
   - WebSearch
   - WebFetch
 ---
 
 # Build List - 営業先リスト作成
 
-BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先候補を大量に収集し、データベースに登録するスキル。
+BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先候補を収集し、連絡先情報を取得した上でデータベースに登録するスキル。
 
-## 実行手順
+**2フェーズ構成:**
+- **Phase 1（候補収集）:** Web検索で営業先候補を幅広く見つける（名前・公式URL・概要）
+- **Phase 2（連絡先取得）:** サブエージェントで各候補の公式サイトを探索し、メールアドレス・フォームURLを取得する
+
+## Phase 1: 候補収集
 
 ### 1. 準備
 
@@ -61,28 +66,26 @@ SALES_STRATEGY.mdの「検索キーワード」「ターゲット」セクショ
 
 ### 4. Web探索の実行
 
-WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収集する。
+WebSearchとWebFetchを組み合わせて、営業先候補を幅広く収集する。
 
-各営業先について以下の情報を取得する:
+このフェーズでは**候補の発見**に集中する。各候補の連絡先（メール・フォーム等）の取得は Phase 2 で行うので、ここでは以下の情報だけ集める:
 
-**必須（これがないと登録しない）:**
+**必須（これがないと候補にしない）:**
 - 名称（企業名、学校名、法人名等）
 - 事業概要（何をしている組織か。公式サイトから1-2文で要約）
 - 公式サイトURL
 
-**可能な限り取得:**
+**取得できれば:**
 - 業種・分野
-- メールアドレス（問い合わせ先、代表メール等）
-- 問い合わせフォームURL（**注意:** 「お問い合わせ」用フォームのみ登録する。「資料請求」「入学相談」「採用応募」等の用途限定フォームは営業提案の送り先として不適切なため登録しない）
-- SNSアカウント（Twitter/X、LinkedIn、Facebook等）
+- 検索中にたまたま見つかったメールアドレスやSNS（わざわざ探さなくてよい）
 
 公式サイトURLと事業概要が取得できない営業先はスキップする。
 
 **探索のコツ:**
 - 1つの検索クエリで見つかる営業先は限られるので、多角的にクエリを変えて探索する
-- 公式サイトにアクセスして、問い合わせ先やフォームURLを取得する
-- ポータルサイトや一覧ページを活用する
+- ポータルサイトや一覧ページを活用すると一度に多くの候補が見つかる
 - 目標件数（`$1`、デフォルト30）に達したら探索を終了する。重複で弾かれた件数はカウントしない（新規登録できた件数でカウント）
+- このフェーズでは個別の公式サイトを深掘りする必要はない。候補の「数」を確保することに注力する
 
 **重複が多い場合の探索の深掘り:**
 
@@ -106,11 +109,29 @@ WebSearchとWebFetchを組み合わせて、片っ端から営業先情報を収
 - 4: やや外れる（一部条件のみ合致）
 - 5: 要検討（間接的な可能性）
 
-### 6. データベース登録
+## Phase 2: 連絡先取得
 
-収集した営業先情報を一括でDBに登録する。`add_prospects.py` が重複チェック→prospects登録→project_prospects紐付けをまとめて行う。
+### 6. サブエージェントによる連絡先の取得
 
-収集した営業先をJSON配列にまとめ、stdinで渡す:
+Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バッチごとにサブエージェントを起動して連絡先情報を取得する。
+
+各サブエージェントのプロンプトに以下を含める:
+- 担当する候補のリスト（company_name, website_url, overview, industry, match_reason, priority）
+- `${CLAUDE_PLUGIN_ROOT}/skills/build-list/references/enrich-contacts.md` を読み込んで、その手順に従うこと
+- 各候補の公式サイトを探索し、メールアドレス・フォームURL・SNSアカウントを取得すること
+- 完了後、取得結果をJSON配列で返すこと
+
+サブエージェントの allowed-tools: `WebFetch`, `WebSearch`, `Read`
+
+サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（company_name, overview, website_url, industry, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
+
+## Phase 3: 登録
+
+### 7. データベース登録
+
+Phase 2 で連絡先を取得した候補を一括でDBに登録する。`add_prospects.py` が重複チェック→prospects登録→project_prospects紐付けをまとめて行う。
+
+サブエージェントから返されたJSONをそのまま（または複数バッチをまとめて）stdinで渡す:
 
 ```bash
 cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
@@ -121,8 +142,7 @@ cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0
     "website_url": "https://example.com",
     "industry": "業種",
     "email": "info@example.com",
-    "contact_form_url": "https://example.com/contact",
-    "corporate_number": "1234567890123",
+    "contact_form_url": null,
     "sns_accounts": {"x": "@account"},
     "match_reason": "ターゲットとして適切な理由（課題・ニーズ含む）",
     "priority": 3
@@ -143,40 +163,12 @@ EOF
 - マッチなし: 新規登録する
 - 全件を1トランザクションで処理（途中エラーがあっても他のエントリは処理を継続）
 
-**出力例:**
-```json
-{
-  "added": 5,
-  "duplicates": 2,
-  "linked_existing": 0,
-  "errors": 1,
-  "details": [...]
-}
-```
-
 **既存のprospectを別プロジェクトに紐付けるだけの場合:**
 
 `existing_prospect_id` を指定すると、prospect新規登録をスキップして紐付けのみ行う:
 ```json
 {"existing_prospect_id": 42, "match_reason": "理由", "priority": 2}
 ```
-
-**登録のコツ:**
-- 5〜10件ずつまとめて登録する（JSON配列が大きくなりすぎないように）
-- 出力の `possible_matches` が報告された場合は、本当に重複でないか確認する
-- `errors` が出た場合は内容を確認し、修正して再登録する
-
-### 7. 連絡先カバレッジの確認
-
-新規登録した営業先のうち、**メールアドレスまたは問い合わせフォームURLがある割合が80%以上**であることを確認する。
-
-80%未満の場合は、不足分について公式サイトを再訪問してメールアドレスやフォームURLを取得し、DBを更新する:
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET email = ?, contact_form_url = ?, updated_at = datetime('now') WHERE id = ?" "<email>" "<form_url>" "<prospect_id>"
-```
-
-連絡先なしの営業先ばかり登録しても、outbound時に大半が無駄になるため、この段階で連絡先の充実を図る。
 
 ### 8. 結果レポート
 
