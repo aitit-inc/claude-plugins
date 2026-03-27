@@ -20,6 +20,8 @@ allowed-tools:
 
 アウトバウンド営業の反応を自動チェックし、データベースに記録するスキル。
 
+**前提:** `${CLAUDE_PLUGIN_ROOT}/references/workspace-conventions.md` の規約に従うこと（data.dbの配置・cdしないルール）。
+
 ## 実行手順
 
 ### 1. 準備

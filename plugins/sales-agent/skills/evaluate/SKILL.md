@@ -14,6 +14,8 @@ allowed-tools:
 
 営業活動の結果データを分析し、戦略・戦術・ターゲティング・メッセージング等のあらゆる側面を評価して自動改善するスキル。
 
+**前提:** `${CLAUDE_PLUGIN_ROOT}/references/workspace-conventions.md` の規約に従うこと（data.dbの配置・cdしないルール）。
+
 ## 実行手順
 
 ### 1. データ収集

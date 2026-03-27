@@ -15,6 +15,8 @@ allowed-tools:
 
 BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先候補を収集し、連絡先情報を取得した上でデータベースに登録するスキル。
 
+**前提:** `${CLAUDE_PLUGIN_ROOT}/references/workspace-conventions.md` の規約に従うこと（data.dbの配置・cdしないルール）。
+
 **2フェーズ構成:**
 - **Phase 1（候補収集）:** Web検索で営業先候補を幅広く見つける（名前・公式URL・概要）
 - **Phase 2（連絡先取得）:** サブエージェントで各候補の公式サイトを探索し、メールアドレス・フォームURLを取得する

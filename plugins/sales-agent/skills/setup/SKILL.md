@@ -12,6 +12,8 @@ allowed-tools:
 
 営業プロジェクトの初期セットアップを行うスキル。SQLiteデータベースの初期化と、製品/サービスごとのサブディレクトリを作成する。
 
+**前提:** `${CLAUDE_PLUGIN_ROOT}/references/workspace-conventions.md` の規約に従うこと（data.dbの配置・cdしないルール）。
+
 ## 実行手順
 
 ### 1. 引数の確認
@@ -22,7 +24,7 @@ allowed-tools:
 
 ### 2. データベース初期化
 
-`data.db` がプロジェクトルートに存在しない場合のみ、初期化スクリプトを実行する:
+`data.db` がワークスペースルートに存在しない場合のみ、初期化スクリプトを実行する:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
@@ -32,7 +34,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
 
 ### 3. サブディレクトリ作成
 
-プロジェクトルート直下に指定名のディレクトリを作成する:
+ワークスペースルート直下に指定名のディレクトリを作成する:
 
 ```bash
 mkdir -p $0

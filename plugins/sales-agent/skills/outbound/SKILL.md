@@ -22,6 +22,8 @@ allowed-tools:
 
 営業リストの営業先に対して、メール・問い合わせフォーム・SNS DMで順次アプローチするスキル。全自動で実行する。
 
+**前提:** `${CLAUDE_PLUGIN_ROOT}/references/workspace-conventions.md` の規約に従うこと（data.dbの配置・cdしないルール）。
+
 ## 実行手順
 
 ### 1. 準備
