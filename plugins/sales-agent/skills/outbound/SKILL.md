@@ -36,7 +36,7 @@ allowed-tools:
 未アプローチの営業先リストをDBから取得する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.overview, p.email, p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')) ORDER BY CASE WHEN p.email IS NOT NULL AND p.email != '' THEN 0 ELSE 1 END, CASE WHEN p.contact_form_url IS NOT NULL AND p.contact_form_url != '' THEN 0 ELSE 1 END, pp.priority ASC, p.id ASC LIMIT ?" "$0" "$1"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db list-reachable "$0" "$1"
 ```
 
 件数の指定がない場合は全件を対象とする。
@@ -87,7 +87,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 
 claude-in-chromeを使用してフォームに入力する。`references/form-filling.md` の手順に従う。
 
-送信後、outreach_logsに記録し、ステータスを更新する:
+**送信本文の検証:** outreach_logs に記録する前に、フォームに入力した本文（body）が空でないことを確認する。空の場合は送信失敗として `status = 'failed'`, `error_message = 'body empty'` で記録し、ステータスは `new` のまま維持する。
+
+送信成功時、outreach_logsに記録し、ステータスを更新する:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, 'form', ?, ?, 'sent')" "$0" "<prospect_id>" "<subject>" "<body>"

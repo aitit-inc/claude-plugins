@@ -28,7 +28,7 @@ allowed-tools:
 `$0` ディレクトリの存在と、DBにプロジェクトが登録済みであることを確認する。
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT id FROM projects WHERE id = ?" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db project-exists "$0"
 ```
 
 ### 2. check-results（サブエージェント）
@@ -42,9 +42,15 @@ Agent toolでサブエージェントを起動し、返信確認を実行する�
 
 サブエージェントからサマリーが返ったら、ユーザーに報告する。
 
-### 3. evaluate（サブエージェント）
+### 3. evaluate（サブエージェント、条件付き）
 
-Agent toolでサブエージェントを起動し、PDCA評価を実行する。
+前回の evaluate 実行日を確認する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "$0"
+```
+
+前回 evaluate から **3営業日以上経過している場合のみ** サブエージェントを起動する。3営業日未満の場合は「前回evaluateから日が浅いためスキップ」と報告してステップ4に進む。evaluations レコードが存在しない場合（初回）は実行する。
 
 プロンプトに以下を含める:
 - プロジェクトディレクトリ: `$0`
@@ -58,7 +64,7 @@ Agent toolでサブエージェントを起動し、PDCA評価を実行する。
 未アプローチ（status = 'new'）の営業先数を確認する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as count FROM project_prospects pp JOIN prospects p ON pp.prospect_id = p.id WHERE pp.project_id = ? AND pp.status = 'new' AND p.do_not_contact = 0 AND ((p.email IS NOT NULL AND p.email != '') OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '') OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}'))" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
 ```
 
 ### 5. outbound（サブエージェント × バッチ分割）

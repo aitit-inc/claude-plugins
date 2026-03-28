@@ -41,7 +41,7 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 **2a. 既存リストの傾向:**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.company_name, p.industry, p.website_url FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id WHERE pp.project_id = ? ORDER BY p.id DESC LIMIT 50" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db existing-list "$0"
 ```
 
 **2b. 探索メモ:**

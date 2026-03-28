@@ -66,7 +66,7 @@ allowed-tools:
 改善アクションを適用する前に、データが十分かどうかを確認する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as total_sent, MAX(sent_at) as last_sent FROM outreach_logs WHERE project_id = ? AND status = 'sent'" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db data-sufficiency "$0"
 ```
 
 以下のいずれかに該当する場合、**SALES_STRATEGY.mdへの変更適用・優先度再計算は行わない**。レポート生成（ステップ5・6）のみ実行し、「データ不足のためモニタリング継続」と報告する:

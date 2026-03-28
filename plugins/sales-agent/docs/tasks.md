@@ -207,6 +207,7 @@ AI-Tasks@surpassone.com
 に通知を送信すること。
 
 ## 31. 設定値のようなことはmdじゃなくjsonへ？
+これ未対応。
 BUSINESS.md, SALES_STRATEGY.md は、これらはこれで良いが、
 例えば完了時の通知崎メールアドレスとか、他にも同類の設定値のような項目があれば、jsonかyamlか何かで管理した方が良いかも？
 
@@ -219,3 +220,10 @@ improvements_idea.md #1(フォームURL品質検証), #2(メールアドレス�
 - build-list を Phase 1（候補収集）+ Phase 2（サブエージェントで連絡先取得）に再構成
 - enrich-contacts.md リファレンス新規作成（メアド優先探索 → フォームは最終手段、適切性も検証）
 - daily-cycle はネスト制約回避のため、ステップ6を 6a(候補収集)/6b(連絡先取得)/6c(DB登録) に分割
+
+## 完了: 34. data.db パス解決の明確化
+全スキルで `data.db` が相対パスで参照されており、サブエージェントがcdすると間違った場所にDBが作られるバグがあった。
+- `references/workspace-conventions.md` を新規作成（data.dbの配置ルール・cdしないルール）
+- 全スキル（6つ）の冒頭にこの規約への参照を追加
+- daily-cycleにはサブエージェントへの規約伝播指示も追加
+- setup SKILL.md の「プロジェクトルート」→「ワークスペースルート」に用語統一

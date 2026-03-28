@@ -38,7 +38,7 @@ allowed-tools:
 直近4営業日以内に送信したアプローチのメタデータを取得する（本文は不要）:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT p.id, p.company_name, p.email, p.website_url, p.sns_accounts, o.id as outreach_id, o.channel, o.subject, o.sent_at FROM prospects p JOIN project_prospects pp ON p.id = pp.prospect_id JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id WHERE pp.project_id = ? AND pp.status = 'contacted' AND o.sent_at >= datetime('now', '-6 days') ORDER BY o.sent_at ASC" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db recent-outreach "$0"
 ```
 
 ### 3. 受信メールの確認
@@ -86,7 +86,9 @@ SNSでDMを送った営業先について、claude-in-chromeで返信を確認�
 2. 返信の有無を確認
 3. 返信があれば内容を取得
 
-### 4. データベース更新
+**ブラウザ拡張が未接続の場合:** SNS確認はスキップするが、SNS経由でアプローチした営業先のうち未確認の件数をカウントしておく。結果レポート（ステップ5）で「**未確認SNS DM: N件**」として必ず報告する。
+
+### 5. データベース更新
 
 反応があった場合、responsesテーブルに記録する:
 
@@ -116,7 +118,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET 
 
 単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。
 
-### 5. 結果レポート
+### 6. 結果レポート
 
 以下を報告する:
 - チェックした営業先数
@@ -124,6 +126,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET 
 - 反応率（反応数 / アプローチ数）
 - 反応の種別内訳（直接返信 / 日程調整完了 / 等）
 - マッチ確度が低い反応があれば「要確認」として一覧表示
+- **未確認SNS DM: N件**（SNS確認がスキップされた場合。0件でも明示する）
 - 注目すべき返信の要約
 - 次のステップとして `/evaluate` の実行を案内する
 
