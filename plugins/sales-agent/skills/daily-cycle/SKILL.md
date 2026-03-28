@@ -114,13 +114,15 @@ build-list スキルはサブエージェント内でさらにサブエージェ
 
 **6b. 重複フィルタ（メインコンテキスト）**
 
-6a で返された候補リストから、既にDBに登録済みの営業先を除外する。
+6a で返された候補リストから、既にDBに登録済みの営業先を除外する。6a の出力をJSONファイルに保存し、`filter_duplicates.py` に渡す:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db all-prospect-identifiers "$0"
+cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/filter_duplicates.py data.db "$0"
+<6aの出力JSON配列>
+EOF
 ```
 
-この結果と 6a の候補を突き合わせ、company_name の完全一致または website_url のドメイン一致で重複を除外する。重複件数を記録しておく。
+スクリプトが company_name の完全一致と website_url のドメイン一致で重複を自動除外し、新規候補のみをJSON配列で出力する（除外結果のサマリーは stderr に出力される）。出力されたJSON配列を 6c に渡す。
 
 新規候補が0件の場合は 6c・6d をスキップし、完了レポートで報告する。
 
@@ -138,15 +140,20 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db all-prospect-iden
 
 **6d. DB登録（メインコンテキスト）**
 
-6c の各サブエージェントから返されたJSONをまとめて `add_prospects.py` で登録する:
+6b のフィルタ済み候補（Phase 1情報）と 6c の連絡先取得結果をマージし、`add_prospects.py` で登録する。
+
+まず、6b の出力（候補JSON）と 6c の出力（連絡先JSON）をそれぞれファイルに保存する:
+- 6b の出力 → `/tmp/candidates.json`
+- 6c の各サブエージェントの出力を1つのJSON配列に結合 → `/tmp/contacts.json`
+
+`merge_prospects.py` で company_name + ドメインで突き合わせマージし、そのまま `add_prospects.py` に渡す:
 
 ```bash
-cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
-<6bの結果をマージしたJSON配列>
-EOF
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /tmp/contacts.json \
+  | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
 ```
 
-登録結果を確認し、新規登録数をサマリーに含める。
+マージ結果のサマリー（未マッチ件数等）は stderr に出力される。未マッチが多い場合は完了レポートで報告する。
 
 ### 7. 完了レポート
 

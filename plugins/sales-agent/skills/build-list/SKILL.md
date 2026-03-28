@@ -133,9 +133,20 @@ Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バ�
 
 ### 7. データベース登録
 
-Phase 2 で連絡先を取得した候補を一括でDBに登録する。`add_prospects.py` が重複チェック→prospects登録→project_prospects紐付けをまとめて行う。
+Phase 1 の候補情報と Phase 2 の連絡先情報を `merge_prospects.py` でマージし、`add_prospects.py` でDB登録する。
 
-サブエージェントから返されたJSONをそのまま（または複数バッチをまとめて）stdinで渡す:
+まず、Phase 1 の候補リスト（連絡先なし）と Phase 2 の全バッチ結果（連絡先あり）をそれぞれJSONファイルに保存する:
+- Phase 1 の候補 → `/tmp/candidates.json`
+- Phase 2 の全バッチ結果を1つのJSON配列に結合 → `/tmp/contacts.json`
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /tmp/contacts.json \
+  | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
+```
+
+マージは company_name + website_url のドメインで突き合わせる。連絡先が見つからなかった候補も（email=null等のまま）登録される。マージの未マッチ件数は stderr に出力される。
+
+**サブエージェントの出力がそのまま add_prospects.py に渡せる形式の場合**（Phase 1 の全フィールド + 連絡先を含む完全なJSON）は、マージスクリプトを省略してそのまま渡してもよい:
 
 ```bash
 cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
