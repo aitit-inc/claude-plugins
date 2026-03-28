@@ -187,11 +187,18 @@ EOF
 
 ### 8. 結果レポート
 
+DB登録後に reachable 件数を確認する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
+```
+
 以下を報告する:
 - 新規登録した営業先数 / 目標件数
+- **reachable 内訳**（今回登録分のうち: email有 N件、form有 N件、SNSのみ N件、連絡先なし N件）
 - 優先度別の内訳
-- チャネル別のカバレッジ（メールあり: N件、フォームあり: N件、SNSあり: N件）
 - 重複で弾かれた件数（多かった場合、どのように探索アングルを変えたか簡潔に記載）
+- プロジェクト全体の reachable 残数（count-reachable の結果）
 - 次のステップとして `/outbound` の実行を案内する
 
 ### 9. 探索メモの更新

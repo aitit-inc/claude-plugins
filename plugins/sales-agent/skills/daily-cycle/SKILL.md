@@ -59,7 +59,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "
 
 サブエージェントからサマリーが返ったら、ユーザーに報告する。
 
-### 4. リスト残数を確認
+### 4. リスト残数を確認し、実行順序を決定
 
 未アプローチ（status = 'new'）の営業先数を確認する:
 
@@ -67,9 +67,15 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
 ```
 
+**実行順序の判定:** リスト残数が outbound 指定件数の **1/3 未満** の場合、outbound より先にステップ6（build-list）を実行してリストを充填する。充填後にステップ5の outbound に戻る。
+
+- リスト残数 ≥ 指定件数の 1/3 → ステップ5（outbound）→ ステップ6（build-list、必要時）
+- リスト残数 < 指定件数の 1/3 → ステップ6（build-list）→ ステップ4を再実行 → ステップ5（outbound）
+- リスト残数 = 0 かつ build-list 未実行 → ステップ6（build-list）→ ステップ4を再実行 → ステップ5（outbound）
+
 ### 5. outbound（サブエージェント × バッチ分割）
 
-**実際のoutbound件数の決定:** `min(指定件数, ステップ4のリスト残数)` を実際のoutbound件数とする。リスト残数が0の場合はoutboundをスキップし、ステップ6（build-list）に進む。
+**実際のoutbound件数の決定:** `min(指定件数, ステップ4のリスト残数)` を実際のoutbound件数とする。リスト残数が0の場合（ステップ6実行後も0の場合）はoutboundをスキップし、完了レポートに進む。
 
 outbound件数を **10件ずつのバッチ** に分割し、それぞれ別のサブエージェントとして**直列**で起動する。
 
@@ -93,10 +99,11 @@ outbound件数を **10件ずつのバッチ** に分割し、それぞれ別の�
 ### 6. build-list（必要時のみ、3ステップ構成）
 
 以下のいずれかの場合に実行する:
+- ステップ4の判定で outbound より先に build-list を実行すると決定された
 - リスト残数（ステップ4の結果 − ステップ5で消費した件数）が outbound件数の3倍未満
 - ステップ5でバッチ間成功率チェックにより連絡先補充が必要と判断された
 
-目標件数はoutbound件数と同じ（`$1`、デフォルト30）とする。
+目標件数はoutbound件数と同じ（`$1`、デフォルト30）とする。ただし、登録件数ではなく **reachable 件数** で目標に近づけることを意識する（連絡先なし分を見越して多めに候補収集する）。
 
 build-list スキルはサブエージェント内でさらにサブエージェントを起動する構成のため、daily-cycle からは直接呼び出せない（ネスト制約）。代わりに、build-list の各フェーズを個別のサブエージェントとして実行する:
 
@@ -154,6 +161,16 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /t
 ```
 
 マージ結果のサマリー（未マッチ件数等）は stderr に出力される。未マッチが多い場合は完了レポートで報告する。
+
+**6e. reachable 再チェック**
+
+build-list 完了後、reachable 件数を再確認する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
+```
+
+ステップ4の判定で build-list を先に実行した場合は、ここからステップ5（outbound）に進む。
 
 ### 7. 完了レポート
 
