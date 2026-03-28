@@ -38,11 +38,13 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 
 探索を始める前に、以下の2つを確認する:
 
-**2a. 既存リストの傾向:**
+**2a. 登録済み営業先の取得（重複回避用）:**
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db existing-list "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db all-prospect-identifiers "$0"
 ```
+
+この結果（company_name + website_url の一覧）を保持する。Phase 1 の候補収集で、ここに含まれる営業先は **候補に入れない**。名称完全一致またはwebsite_urlのドメイン一致で判定する。
 
 **2b. 探索メモ:**
 

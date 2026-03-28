@@ -53,6 +53,8 @@ SALES_STRATEGY.mdの「営業チャネル」セクションに記載されたチ
 
 1つの営業先につき、利用可能なチャネル全てでアプローチする必要はない。最も効果的な1チャネルで十分。
 
+**ブラウザツール（claude-in-chrome）が利用できない場合:** フォーム入力・SNS DMは実行不可。メールアドレスがある営業先のみを対象とし、フォーム/SNSのみの営業先はスキップする。スキップした件数は結果レポートで「ブラウザ未接続によりスキップ: N件」として報告する。
+
 ### 3. メール送信
 
 `references/email-guidelines.md` のガイドラインに従ってメールを作成する。SALES_STRATEGY.mdの「送信者情報」セクションから送信元メールアドレスと署名を取得する。
@@ -73,12 +75,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 本文が短い場合は `--body-file` の代わりに `--body "<本文>"` も可。
 
 **スクリプトの動作:**
-- gog send でメールを送信
+- メールを送信し、結果をDBに記録する（送信+ログ+ステータス更新がアトミック）
 - 成功時: outreach_logs (status='sent') に記録し、project_prospects を 'contacted' に更新
 - 失敗時: outreach_logs (status='failed', error_message) に記録。ステータスは 'new' のまま維持
 - 出力: `{"status": "sent"|"failed", "outreach_log_id": N, "error_message": null|"..."}`
 
 **注意:**
+- **メール送信は必ず `send_and_log.py` 経由で行うこと。** gog コマンドを直接叩かない（DBにログが残らなくなるため）
 - `--body` / `--body-file` に渡す本文は署名を含めた完全な内容にする
 - Gmail MCP（`gmail_create_draft`）はドラフト作成のみで送信不可
 - 送信元エイリアスを指定する場合は `--from "<エイリアス>"` を追加

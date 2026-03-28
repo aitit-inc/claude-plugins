@@ -15,6 +15,7 @@ Commands:
   data-sufficiency <project_id>        evaluate用のデータ充足度チェック
   last-evaluation <project_id>         最新のevaluation日時
   existing-list <project_id>           登録済み営業先の直近50件
+  all-prospect-identifiers <project_id>  全登録済み営業先の名前・URL一覧（重複回避用）
 """
 
 from __future__ import annotations
@@ -145,6 +146,20 @@ def cmd_existing_list(conn: sqlite3.Connection, args: list[str]) -> None:
     print_json(rows_to_dicts(cursor.fetchall()))
 
 
+def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> None:
+    """全登録済み営業先の名前・URL一覧（重複回避用）"""
+    if len(args) < 1:
+        error_exit("Usage: all-prospect-identifiers <project_id>")
+    cursor = conn.execute(
+        "SELECT p.company_name, p.website_url"
+        " FROM prospects p"
+        " JOIN project_prospects pp ON p.id = pp.prospect_id"
+        " WHERE pp.project_id = ?",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
 # ---------------------------------------------------------------------------
 # コマンドディスパッチ
 # ---------------------------------------------------------------------------
@@ -157,6 +172,7 @@ COMMANDS: dict[str, tuple[str, object]] = {
     "data-sufficiency": ("evaluate用データ充足度", cmd_data_sufficiency),
     "last-evaluation": ("最新evaluation日時", cmd_last_evaluation),
     "existing-list": ("登録済み営業先の直近50件", cmd_existing_list),
+    "all-prospect-identifiers": ("全登録済み営業先の名前・URL一覧", cmd_all_prospect_identifiers),
 }
 
 

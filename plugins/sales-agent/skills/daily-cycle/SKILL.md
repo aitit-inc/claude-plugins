@@ -112,9 +112,21 @@ build-list スキルはサブエージェント内でさらにサブエージェ
 - 完了後、候補リストをJSON配列で返すこと（各オブジェクト: company_name, website_url, overview, industry, match_reason, priority）
 - 探索メモ（`$0/SEARCH_NOTES.md`）の更新も行うこと
 
-**6b. 連絡先取得（サブエージェント × バッチ）**
+**6b. 重複フィルタ（メインコンテキスト）**
 
-6a で返された候補リストを **5件ずつのバッチ** に分割し、それぞれサブエージェントを起動する。
+6a で返された候補リストから、既にDBに登録済みの営業先を除外する。
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db all-prospect-identifiers "$0"
+```
+
+この結果と 6a の候補を突き合わせ、company_name の完全一致または website_url のドメイン一致で重複を除外する。重複件数を記録しておく。
+
+新規候補が0件の場合は 6c・6d をスキップし、完了レポートで報告する。
+
+**6c. 連絡先取得（サブエージェント × バッチ）**
+
+6b で絞り込まれた新規候補を **5件ずつのバッチ** に分割し、それぞれサブエージェントを起動する。
 
 各サブエージェントのプロンプトに以下を含める:
 - 担当する候補のリスト（6aの出力から該当分を渡す）
@@ -124,9 +136,9 @@ build-list スキルはサブエージェント内でさらにサブエージェ
 
 サブエージェントの allowed-tools: `WebFetch`, `WebSearch`, `Read`
 
-**6c. DB登録（メインコンテキスト）**
+**6d. DB登録（メインコンテキスト）**
 
-6b の各サブエージェントから返されたJSONをまとめて `add_prospects.py` で登録する:
+6c の各サブエージェントから返されたJSONをまとめて `add_prospects.py` で登録する:
 
 ```bash
 cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"

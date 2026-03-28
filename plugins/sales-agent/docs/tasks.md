@@ -227,3 +227,16 @@ improvements_idea.md #1(フォームURL品質検証), #2(メールアドレス�
 - 全スキル（6つ）の冒頭にこの規約への参照を追加
 - daily-cycleにはサブエージェントへの規約伝播指示も追加
 - setup SKILL.md の「プロジェクトルート」→「ワークスペースルート」に用語統一
+
+## 完了: 35. gogコマンドの使い方再確認
+send_and_log.py で gog send というのがあるが多分間違っている。
+gog gmail send が正しいかも。
+→ 確認の結果、`gog send` は `gog gmail send` のエイリアスで正常動作する。スクリプト修正不要。
+ただし outbound SKILL.md で gog コマンドの直接言及があったため、send_and_log.py 必須の警告を追加した。
+
+## 完了: 36. improvements_idea.md 2026-03-28 対応
+- #1+#2: 重複回避 — `all-prospect-identifiers` コマンド追加、build-list Phase 1 に除外リスト渡し、daily-cycle 6a→6b に重複フィルタ（6b）を追加
+- #3: outbound SKILL.md から gog 直接言及削除、send_and_log.py 必須を明示
+- #4: outbound にブラウザ未接続時の SNS/フォームスキップ指示を追加
+- #5(チャネルフィルタ): #4の指示レベル対応で十分。やらない
+- #6(build-list経過日数): 低影響。やらない
