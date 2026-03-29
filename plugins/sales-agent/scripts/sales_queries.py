@@ -10,7 +10,7 @@ Usage:
 Commands:
   project-exists <project_id>          プロジェクトの存在確認
   count-reachable <project_id>         アプローチ可能な未送信営業先数（email/formあり。SNSのみ除外）
-  list-reachable <project_id> <limit>  アプローチ可能な未送信営業先リスト（email/formあり。SNSのみ除外）
+  list-reachable <project_id> <limit>  アプローチ可能な未送信営業先リスト（email→form→SNSの優先順）
   recent-outreach <project_id>         直近4営業日以内のアプローチ済み営業先
   data-sufficiency <project_id>        evaluate用のデータ充足度チェック
   last-evaluation <project_id>         最新のevaluation日時
@@ -59,7 +59,7 @@ def cmd_count_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
 
 
 def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
-    """アプローチ可能な未送信営業先リスト（email/formあり。SNSのみは除外）"""
+    """アプローチ可能な未送信営��先リスト（email→form→SNSの優先順）"""
     if len(args) < 2:
         error_exit("Usage: list-reachable <project_id> <limit>")
     cursor = conn.execute(
@@ -72,10 +72,13 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
         " AND ("
         "   (p.email IS NOT NULL AND p.email != '')"
         "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '')"
+        "   OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')"
         " )"
         " ORDER BY"
         "   CASE WHEN p.email IS NOT NULL AND p.email != '' THEN 0 ELSE 1 END,"
         "   CASE WHEN p.contact_form_url IS NOT NULL AND p.contact_form_url != ''"
+        "     THEN 0 ELSE 1 END,"
+        "   CASE WHEN p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}'"
         "     THEN 0 ELSE 1 END,"
         "   pp.priority ASC, p.id ASC"
         " LIMIT ?",
@@ -165,7 +168,7 @@ def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> N
 COMMANDS: dict[str, tuple[str, object]] = {
     "project-exists": ("プロジェクトの存在確認", cmd_project_exists),
     "count-reachable": ("アプローチ可能な未送信営業先数（SNSのみ除外）", cmd_count_reachable),
-    "list-reachable": ("未送信営業先リスト（SNSのみ除外）", cmd_list_reachable),
+    "list-reachable": ("未送信営業先リスト（email→form→SNS優先順）", cmd_list_reachable),
     "recent-outreach": ("直近アプローチ済み営業先", cmd_recent_outreach),
     "data-sufficiency": ("evaluate用データ充足度", cmd_data_sufficiency),
     "last-evaluation": ("最新evaluation日時", cmd_last_evaluation),
