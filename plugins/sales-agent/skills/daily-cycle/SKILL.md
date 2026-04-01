@@ -241,3 +241,11 @@ gog send --account "<送信元メールアドレス>" --to "<通知先メール�
 ```
 
 本文が長い場合は `--body-file` を使用する。
+
+### 10. 作業結果のコミット・プッシュ
+
+全ステップ完了後、作業中に変更されたファイル（DAILY_CYCLE_REPORT.md、RESULTS_REPORT.md、SEARCH_NOTES.md, data.db 等）をコミットしてプッシュする。このステップは他のステップの成否に関わらず**必ず実行する**。
+
+```bash
+git add . && git commit -m "work: :e-mail: $0" && git push
+```
