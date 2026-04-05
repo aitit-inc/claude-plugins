@@ -60,6 +60,8 @@ class ProspectEntry(TypedDict, total=False):
     email: str
     contact_form_url: str
     sns_accounts: str | dict[str, str]
+    do_not_contact: bool
+    notes: str
     # project_prospects 用
     match_reason: str
     priority: int
@@ -175,11 +177,15 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     elif isinstance(sns_val, str):
         sns_str = sns_val
 
+    do_not_contact = 1 if entry.get("do_not_contact") else 0
+    notes = entry.get("notes")
+
     sql = (
         "INSERT INTO prospects"
         + " (company_name, corporate_number, overview, industry,"
-        + " website_url, email, contact_form_url, sns_accounts)"
-        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        + " website_url, email, contact_form_url, sns_accounts,"
+        + " do_not_contact, notes)"
+        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     cursor = conn.execute(
         sql,
@@ -192,6 +198,8 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
             entry.get("email"),
             entry.get("contact_form_url"),
             sns_str,
+            do_not_contact,
+            notes,
         ),
     )
     row_id = cursor.lastrowid
