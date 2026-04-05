@@ -55,11 +55,29 @@ lead-machine の30個のプロンプトテンプレートを分析し、以下�
 
 Claude Code の /schedule 機能（Remote Trigger）も選択肢。これなら OS 依存なし。
 
-### gog CLI が使えない場合の代替手段
-現状 /outbound のメール送信は gog CLI に依存。使えない環境向けの対応案:
-- **gmail.com**: アプリパスワード + Python smtplib（標準ライブラリのみで可能、追加パッケージ不要）
-- **独自ドメイン**: Resend API 等の送信サービス
-- **実装方針**: send_and_log.py に送信バックエンドを抽象化し、設定で切り替え可能にする
+### Gmail / Google Workspace 非依存化
+現状、プラグイン全体が Gmail / GWS に深く依存している。送信だけでなく受信確認・ドラフト作成・通知も影響を受ける。
+
+**Gmail/GWS 依存の全箇所:**
+
+| 機能 | 依存ツール | Gmail なしの場合 |
+|------|-----------|-----------------|
+| メール送信 (/outbound) | gog CLI | smtplib / Resend で代替可能 |
+| 返信確認 (/check-results) | Gmail MCP (search/read) | **代替手段なし** — 他メールプロバイダ用の MCP が存在しない |
+| バウンス検出 (/check-results) | Gmail MCP (mailer-daemon検索) | **代替手段なし** |
+| 日程調整通知確認 (/check-results) | Gmail MCP (通知メール検索) | **代替手段なし** |
+| ドラフト作成 (/check-results) | Gmail MCP (create_draft) | **代替手段なし** |
+| 完了通知 (/daily-cycle wrap-up) | gog CLI | smtplib / Resend で代替可能 |
+
+**つまり:**
+- gog だけ代替しても、**受信側（check-results）が Gmail MCP に完全依存**しているため、Gmail 以外のメールを使うユーザーは返信確認・バウンス検出・ドラフト作成が全て手動になる
+- Resend 等で独自ドメインから送信しても、返信はそのドメインのメールボックスに届く。そのメールボックスを読む手段がない
+
+**対応案（段階的）:**
+
+1. **送信の抽象化（比較的容易）**: send_and_log.py に送信バックエンドを抽象化し、gog / smtplib / Resend を設定で切り替え可能にする。通知メールも同様
+2. **受信確認の代替（難易度高）**: IMAP で受信確認する Python スクリプトを作る案はある（smtplib 同様、標準ライブラリの imaplib で可能）。ただし IMAP のセットアップはプロバイダごとに異なり、ユーザーの負担が大きい
+3. **現実的な落とし所**: Gmail / GWS ユーザーをプライマリーターゲットとし、非 Gmail ユーザーには「送信は可能だが受信確認は手動」という制限を明記する。/setup の環境チェックで適切に案内済み
 
 ### アウトバウンドのドラフトモード（送信せずドラフトのみ）
 完全自動送信が怖いユーザー向けに、gmail_create_draft でドラフトだけ作成するモード。

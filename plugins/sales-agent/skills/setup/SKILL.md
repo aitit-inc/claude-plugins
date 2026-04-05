@@ -22,7 +22,32 @@ allowed-tools:
 
 `$0` が空の場合はエラーを返す。
 
-### 2. データベース初期化
+### 2. 環境チェック
+
+以下のコマンドを実行して、必要なツールの利用可否を確認する:
+
+```bash
+python3 --version 2>&1 && python3 -c "import sqlite3; print('sqlite3: ok')" 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; echo "---"; which gog 2>&1 && gog version 2>&1
+```
+
+結果に応じてユーザーに状況を伝える:
+
+**python3 が使えない場合（致命的）:**
+このプラグインの全機能が python3 に依存しているため、python3 をインストールするまで利用できない旨を伝え、セットアップを**中断**する。
+
+**git が使えない / リモートリポジトリが未設定の場合:**
+daily-cycle の自動コミット・プッシュが動作しないため、data.db やレポートの**データ消失リスク**がある旨を警告する。利用自体は可能。
+
+**gog が使えない場合:**
+メールの自動送信ができない。Gmail MCP が利用可能であればドラフト作成までは可能だが、送信は手動になる旨を警告する。
+
+**Gmail MCP / Claude in Chrome について:**
+bash では確認できないため、以下の依存関係をユーザーに伝える:
+- **Gmail MCP** (`gmail_search_messages` 等): /check-results での返信確認と /check-results でのドラフト作成に必要。未設定の場合、返信確認が手動になる
+- **Claude in Chrome**: /outbound でのフォーム送信・SNS DM送信に必要。未設定の場合、メールアドレスがある営業先のみが対象になる
+- **gog も Gmail MCP も両方使えない場合**: メール送信もドラフト作成もできないため、outbound 機能が実質使えない旨を明確に警告する
+
+### 3. データベース初期化
 
 `data.db` がワークスペースルートに存在しない場合のみ、初期化スクリプトを実行する:
 
@@ -32,7 +57,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
 
 既にDBが存在する場合はスキップし、その旨を報告する。
 
-### 3. サブディレクトリ作成
+### 4. サブディレクトリ作成
 
 ワークスペースルート直下に指定名のディレクトリを作成する:
 
@@ -42,7 +67,7 @@ mkdir -p $0
 
 既に存在する場合はスキップ。
 
-### 4. プロジェクト登録
+### 5. プロジェクト登録
 
 DBの `projects` テーブルにプロジェクトを登録する:
 
@@ -50,7 +75,7 @@ DBの `projects` テーブルにプロジェクトを登録する:
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (id) VALUES (?)" "$0"
 ```
 
-### 5. 完了報告
+### 6. 完了報告
 
 以下を報告する:
 - データベースの状態（新規作成 or 既存）
