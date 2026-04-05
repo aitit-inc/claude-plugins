@@ -16,6 +16,10 @@ allowed-tools:
 
 **重要: このスキルは `context: fork` を使わないこと。** サブエージェントのネストは1階層までという制約があるため、daily-cycle自体はメインcontextで動き、各フェーズをAgent toolで起動する必要がある。
 
+**コンテキスト軽量化ルール:**
+- サブエージェントは**詳細結果を `$0/.tmp/` 内のファイルに書き出し**、メインには**判断に必要な最小限のサマリー（3行以内）だけ**を返すこと
+- 最終レポート・通知・commitは wrap-up サブエージェントが `.tmp/` ファイルを読んで実行する
+
 ## 引数
 
 - プロジェクトディレクトリ名: `$0`（必須）
@@ -25,10 +29,22 @@ allowed-tools:
 
 ### 1. 準備
 
+まず現在の正確な日時・曜日を取得する。以降のステップではこの結果を正とする（システムの日付情報より優先）。
+
+```bash
+date '+%Y-%m-%d %H:%M (%A)'
+```
+
 `$0` ディレクトリの存在と、DBにプロジェクトが登録済みであることを確認する。
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db project-exists "$0"
+```
+
+一時ディレクトリを作成する（サブエージェントの詳細結果保存用）:
+
+```bash
+mkdir -p "$0/.tmp"
 ```
 
 ### 2. 前回サイクルレビュー
@@ -54,7 +70,8 @@ Agent toolでサブエージェントを起動し、返信確認を実行する�
 プロンプトに以下を含める:
 - プロジェクトディレクトリ: `$0`
 - `${CLAUDE_PLUGIN_ROOT}/skills/check-results/SKILL.md` を読み込んで、その手順に従うこと
-- 完了後、結果サマリー（反応数、内訳、送付NG件数、作成したドラフト数）を返すこと
+- 詳細結果（反応の内訳、各返信の要約、ドラフト作成結果等）を `$0/.tmp/check-results-summary.md` に書き出すこと
+- メインへの返答は **3行以内のサマリーのみ**。例: 「反応3件(positive 2, neutral 1)。ドラフト2件作成。送付NG 0件。」
 
 サブエージェントからサマリーが返ったら、ユーザーに報告する。
 
@@ -71,7 +88,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "
 プロンプトに以下を含める:
 - プロジェクトディレクトリ: `$0`
 - `${CLAUDE_PLUGIN_ROOT}/skills/evaluate/SKILL.md` を読み込んで、その手順に従うこと
-- 完了後、主要KPIと適用した改善内容のサマリーを返すこと
+- 詳細結果（KPI数値、分析結果、適用した改善内容）を `$0/.tmp/evaluate-summary.md` に書き出すこと
+- メインへの返答は **3行以内のサマリーのみ**。例: 「反応率4.2%。メッセージング改善を適用。検索キーワード2件追加。」
 
 サブエージェントからサマリーが返ったら、ユーザーに報告する。
 
@@ -91,7 +109,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "
 
 ### 6. outbound（サブエージェント × バッチ分割）
 
-**実際のoutbound件数の決定:** `min(指定件数, ステップ5のリスト残数)` を実際のoutbound件数とする。リスト残数が0の場合（ステップ7実行後も0の場合）はoutboundをスキップし、完了レポートに進む。
+**実際のoutbound件数の決定:** `min(指定件数, ステップ5のリスト残数)` を実際のoutbound件数とする。リスト残数が0の場合（ステップ7実行後も0の場合）はoutboundをスキップし、ステップ8に進む。
 
 outbound件数を **10件ずつのバッチ** に分割し、それぞれ別のサブエージェントとして**直列**で起動する。
 
@@ -100,8 +118,10 @@ outbound件数を **10件ずつのバッチ** に分割し、それぞれ別の�
 各サブエージェントのプロンプトに以下を含める:
 - プロジェクトディレクトリ: `$0`
 - 処理件数: 10（最終バッチは端数）
+- バッチ番号（1, 2, 3...）
 - `${CLAUDE_PLUGIN_ROOT}/skills/outbound/SKILL.md` を読み込んで、その手順に従うこと
-- 完了後、アプローチ数（成功/失敗内訳）・チャネル内訳・unreachable件数のサマリーを返すこと
+- 詳細結果を `$0/.tmp/outbound-batch-N.md` に書き出すこと（Nはバッチ番号）
+- メインへの返答は **成功数・失敗数・unreachable数・失敗の主な理由（あれば）のみ**。例: 「成功8, 失敗1(フォーム送信エラー), unreachable 1」
 
 **直列にする理由:** 各バッチが同じDBの同じステータスを参照するため、並列実行すると同じ営業先に重複アプローチするリスクがある。
 
@@ -180,9 +200,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /t
   | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
 ```
 
-マージ結果のサマリー（未マッチ件数等）は stderr に出力される。未マッチが多い場合は完了レポートで報告する。
+マージ結果のサマリー（未マッチ件数等）は stderr に出力される。
 
-**7e. reachable 再チェック**
+**7e. reachable 再チェック & サマリー書き出し**
 
 build-list 完了後、reachable 件数を再確認する:
 
@@ -190,19 +210,25 @@ build-list 完了後、reachable 件数を再確認する:
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
 ```
 
+build-list のサマリー（追加件数、reachable件数、未マッチ件数等）を `$0/.tmp/build-list-summary.md` に書き出す。
+
 ステップ5の判定で build-list を先に実行した場合は、ここからステップ6（outbound）に進む。
 
-### 8. 完了レポート
+### 8. wrap-up（サブエージェント）
 
-全フェーズのサマリーを集約して報告する:
-- check-results: 反応数、ポジティブ/ネガティブの内訳
-- evaluate: 主要KPI、適用した改善内容
-- outbound: 合計アプローチ数、チャネル内訳、成功率、失敗数
-- build-list: 追加数（またはスキップ）
-- 現在のリスト残数
-- 次回への申し送り（問題・注意点・戦略調整の提案があれば）
+**全フェーズ完了後、レポート生成・通知・commitを1つのサブエージェントで実行する。** これにより、メインコンテキストの蓄積に影響されず確実に最終処理を行う。
 
-レポート内容を `$0/DAILY_CYCLE_REPORT.md` に保存する（上書き）。フォーマット:
+プロンプトに以下を含める:
+- プロジェクトディレクトリ: `$0`
+- 実行日時: ステップ1で取得した日時
+- evaluate をスキップした場合はその旨
+- outbound をスキップした場合はその旨
+- build-list をスキップした場合はその旨
+- `$0/.tmp/` 内の全ファイルを読み込んで、以下の3つを順に実行すること
+
+**8a. DAILY_CYCLE_REPORT.md の生成**
+
+`$0/.tmp/` 内のサマリーファイルを全て読み込み、以下のフォーマットで `$0/DAILY_CYCLE_REPORT.md` を上書き保存する:
 
 ```markdown
 # Daily Cycle Report
@@ -211,7 +237,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "
 - プロジェクト: $0
 
 ## check-results
-（反応数、内訳）
+（反応数、内訳、ドラフト作成数）
 
 ## evaluate
 （KPI、改善内容、またはスキップ理由）
@@ -232,20 +258,26 @@ X件（reachable）
 （問題、注意点、戦略調整の提案など。なければ「特になし」）
 ```
 
-### 9. 完了通知メール
+**8b. 完了通知メール**
 
-SALES_STRATEGY.mdの「通知設定」セクションから通知先メールアドレスを、「送信者情報」セクションから送信元メールアドレスを取得する。通知先が「なし」または未設定の場合はスキップする。
+`$0/SALES_STRATEGY.md` の「通知設定」セクションから通知先メールアドレスを、「送信者情報」セクションから送信元メールアドレスを取得する。通知先が「なし」または未設定の場合はスキップする。
 
 ```bash
-gog send --account "<送信元メールアドレス>" --to "<通知先メールアドレス>" --subject "daily-cycle完了: $0" --body "<ステップ8のレポート内容>"
+gog send --account "<送信元メールアドレス>" --to "<通知先メールアドレス>" --subject "daily-cycle完了: $0" --body-file "$0/DAILY_CYCLE_REPORT.md"
 ```
 
-本文が長い場合は `--body-file` を使用する。
+**8c. 作業結果のコミット・プッシュ**
 
-### 10. 作業結果のコミット・プッシュ
-
-全ステップ完了後、作業中に変更されたファイル（DAILY_CYCLE_REPORT.md、RESULTS_REPORT.md、SEARCH_NOTES.md, data.db 等）をコミットしてプッシュする。このステップは他のステップの成否に関わらず**必ず実行する**。
+作業中に変更されたファイルをコミットしてプッシュする。このステップは他の処理の成否に関わらず**必ず実行する**。
 
 ```bash
 git add . && git commit -m "work: :e-mail: $0" && git push
 ```
+
+**8d. 一時ファイルの削除**
+
+```bash
+rm -rf "$0/.tmp"
+```
+
+サブエージェントのメインへの返答: レポート保存の成否、通知メール送信の成否、commit の成否を簡潔に報告。
