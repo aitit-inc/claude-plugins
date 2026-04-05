@@ -14,6 +14,7 @@ allowed-tools:
   - mcp__claude_in_chrome__navigate
   - mcp__claude_in_chrome__read_page
   - mcp__claude_in_chrome__get_page_text
+  - mcp__claude_ai_Gmail__gmail_create_draft
 ---
 
 # Check Results - 結果収集
@@ -118,7 +119,26 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET 
 
 単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。
 
-### 6. 結果レポート
+### 6. 返信ドラフト作成
+
+ステップ5でポジティブな返信（`responded`）を記録した営業先がある場合、Gmail MCPを使って返信ドラフトを自動作成する。
+
+**対象:** sentiment が positive または neutral で、response_type が `reply` または `meeting_request` の返信のみ。バウンス・自動返信・拒否は対象外。
+
+**ドラフト作成手順:**
+
+1. `$0/SALES_STRATEGY.md` の「送信者情報」「メッセージング」セクションを参照する
+2. 返信内容に応じて適切なドラフトを作成する:
+   - **ポジティブな返信（興味あり）** → 御礼 + 日程調整リンク or 日程候補3つ提示
+   - **資料請求** → 御礼 + 資料送付の旨（※資料自体の添付はドラフト後にユーザーが行う）
+   - **質問・問い合わせ** → 質問への回答案 + 次のステップ提案
+   - **日程調整完了通知** → 確認の御礼 + 当日の案内
+3. `mcp__claude_ai_Gmail__gmail_create_draft` でドラフトを作成する。件名は元メールへの返信形式（`Re: {元の件名}`）にする
+4. 作成したドラフト数を結果レポートに含める
+
+**注意:** 自動送信は行わない。ドラフト作成のみで、送信はユーザーが内容を確認してから手動で行う。ドラフトが作成できなかった場合（Gmail MCP未接続等）はスキップし、レポートで報告する。
+
+### 7. 結果レポート
 
 以下を報告する:
 - チェックした営業先数
@@ -127,6 +147,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET 
 - 反応の種別内訳（直接返信 / 日程調整完了 / 等）
 - マッチ確度が低い反応があれば「要確認」として一覧表示
 - **未確認SNS DM: N件**（SNS確認がスキップされた場合。0件でも明示する）
+- **作成した返信ドラフト: N件**（ステップ6で作成した数。0件でも明示する。ドラフトがある場合は Gmail の下書きを確認するよう案内する）
 - 注目すべき返信の要約
 - 次のステップとして `/evaluate` の実行を案内する
 

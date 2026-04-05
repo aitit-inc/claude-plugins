@@ -36,7 +36,7 @@ allowed-tools:
 
 ### 3. 多角的分析
 
-以下の観点で分析を行う:
+`${CLAUDE_PLUGIN_ROOT}/skills/evaluate/references/analysis-frameworks.md` を参照し、以下の観点で分析を行う:
 
 **反応率分析:**
 - 全体の反応率

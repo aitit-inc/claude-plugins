@@ -8,6 +8,7 @@ Usage:
 名前付きサブコマンドとして実行する。
 
 Commands:
+  list-projects                        全プロジェクト一覧
   project-exists <project_id>          プロジェクトの存在確認
   count-reachable <project_id>         アプローチ可能な未送信営業先数（email/formあり。SNSのみ除外）
   list-reachable <project_id> <limit>  アプローチ可能な未送信営業先リスト（email→form→SNSの優先順）
@@ -30,6 +31,14 @@ from sales_db import error_exit, get_connection, print_json, rows_to_dicts  # py
 # ---------------------------------------------------------------------------
 # クエリ定義
 # ---------------------------------------------------------------------------
+
+def cmd_list_projects(conn: sqlite3.Connection, args: list[str]) -> None:
+    """全プロジェクト一覧"""
+    cursor = conn.execute(
+        "SELECT id, created_at FROM projects ORDER BY created_at ASC",
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
 
 def cmd_project_exists(conn: sqlite3.Connection, args: list[str]) -> None:
     """プロジェクトの存在確認"""
@@ -166,6 +175,7 @@ def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> N
 # ---------------------------------------------------------------------------
 
 COMMANDS: dict[str, tuple[str, object]] = {
+    "list-projects": ("全プロジェクト一覧", cmd_list_projects),
     "project-exists": ("プロジェクトの存在確認", cmd_project_exists),
     "count-reachable": ("アプローチ可能な未送信営業先数（SNSのみ除外）", cmd_count_reachable),
     "list-reachable": ("未送信営業先リスト（email→form→SNS優先順）", cmd_list_reachable),
