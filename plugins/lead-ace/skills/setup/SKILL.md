@@ -6,6 +6,7 @@ allowed-tools:
   - Bash
   - Read
   - Write
+  - AskUserQuestion
 ---
 
 # Setup - プロジェクト初期セットアップ
@@ -22,7 +23,26 @@ allowed-tools:
 
 `$0` が空の場合はエラーを返す。
 
-### 2. 環境チェック
+### 2. ライセンスチェック
+
+プロジェクトの追加が可能かどうかを確認する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-can-add "$(pwd)/$0"
+```
+
+結果に応じた処理:
+
+- **`PAID`** → そのまま続行
+- **`FREE_OK`** → 「無料版（1プロジェクト）として登録します」と表示して続行
+- **`FREE_LIMIT`** → 「無料版は1プロジェクトまでです。ライセンスキーを入力するか、既存プロジェクトを /delete-project で削除してください。」と表示。AskUserQuestionでキー入力を促す（スキップも可）
+  - ユーザーがキーを入力した場合: `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py save-key "<入力されたキー>"` を実行
+  - 結果が `VALID` → 「ライセンスキーが有効です。有料版として登録します。」と表示して続行
+  - 結果が `INVALID` → 「ライセンスキーが無効です。」と表示して**中断**
+  - ユーザーがスキップした場合 → **中断**
+- **`ALREADY_REGISTERED`** → 「このプロジェクトは登録済みです。そのまま続行します。」
+
+### 3. 環境チェック
 
 以下のコマンドを実行して、必要なツールの利用可否を確認する:
 
@@ -47,7 +67,7 @@ bash では確認できないため、以下の依存関係をユーザーに伝
 - **Claude in Chrome**: /outbound でのフォーム送信・SNS DM送信に必要。未設定の場合、メールアドレスがある営業先のみが対象になる
 - **gog も Gmail MCP も両方使えない場合**: メール送信もドラフト作成もできないため、outbound 機能が実質使えない旨を明確に警告する
 
-### 3. データベース初期化
+### 4. データベース初期化
 
 `data.db` がワークスペースルートに存在しない場合のみ、初期化スクリプトを実行する:
 
@@ -57,7 +77,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py
 
 既にDBが存在する場合はスキップし、その旨を報告する。
 
-### 4. サブディレクトリ作成
+### 5. サブディレクトリ作成
 
 ワークスペースルート直下に指定名のディレクトリを作成する:
 
@@ -67,7 +87,7 @@ mkdir -p $0
 
 既に存在する場合はスキップ。
 
-### 5. プロジェクト登録
+### 6. プロジェクト登録
 
 DBの `projects` テーブルにプロジェクトを登録する:
 
@@ -75,7 +95,15 @@ DBの `projects` テーブルにプロジェクトを登録する:
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (id) VALUES (?)" "$0"
 ```
 
-### 6. 完了報告
+### 7. グローバル登録
+
+`~/.leadace/projects` にプロジェクトパスを登録する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py register "$(pwd)/$0"
+```
+
+### 8. 完了報告
 
 以下を報告する:
 - データベースの状態（新規作成 or 既存）

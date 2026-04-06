@@ -17,6 +17,14 @@ allowed-tools:
 
 ## 実行手順
 
+### 0. プロジェクト登録チェック
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
+```
+
+結果が `NOT_REGISTERED` の場合、「このプロジェクトはセットアップされていません。先に `/setup $0` を実行してください。」と表示して**即座に中断**する。
+
 ### 1. プロジェクト確認
 
 - プロジェクトディレクトリ名: `$0`（必須）

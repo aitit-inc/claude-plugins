@@ -21,6 +21,16 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 - **Phase 1（候補収集）:** Web検索で営業先候補を幅広く見つける（名前・公式URL・概要）
 - **Phase 2（連絡先取得）:** サブエージェントで各候補の公式サイトを探索し、メールアドレス・フォームURLを取得する
 
+## Phase 0: 前提チェック
+
+### 0. プロジェクト登録チェック
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
+```
+
+結果が `NOT_REGISTERED` の場合、「このプロジェクトはセットアップされていません。先に `/setup $0` を実行してください。」と表示して**即座に中断**する。
+
 ## Phase 1: 候補収集
 
 ### 1. 準備
