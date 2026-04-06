@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lead Ace セットアップガイド</title>
+<style>
+  :root {
+    --bg-primary: #F4F2F0;
+    --bg-secondary: #E6E2E2;
+    --bg-tertiary: #DEDBDA;
+    --text-primary: #333333;
+    --text-secondary: #706A68;
+    --text-muted: #948D8A;
+    --accent: #E87462;
+    --accent-dark: #D06A58;
+    --accent-hover: #C05E4C;
+    --info: #2A827E;
+    --warning: #96702A;
+    --error: #C05248;
+    --border: #E1DEDE;
+    --code-bg: #2C2A28;
+    --code-text: #E8E4E0;
+    --white: #FFFFFF;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  .hero {
+    text-align: center;
+    padding: 48px 0 40px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+  }
+  .hero p {
+    color: var(--text-secondary);
+    font-size: 15px;
+  }
+  .hero .badge {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--white);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+  }
+
+  /* TOC */
+  .toc {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px 28px;
+    margin-bottom: 40px;
+  }
+  .toc h2 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .toc ol {
+    padding-left: 20px;
+  }
+  .toc li {
+    margin-bottom: 6px;
+  }
+  .toc a {
+    color: var(--info);
+    text-decoration: none;
+  }
+  .toc a:hover {
+    text-decoration: underline;
+  }
+
+  /* Steps */
+  .step {
+    margin-bottom: 40px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .step:last-child {
+    border-bottom: none;
+  }
+  .step-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .step-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: var(--accent);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .step-header h2 {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .step-type {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .step-type.script {
+    background: #E0F2F1;
+    color: var(--info);
+  }
+  .step-type.manual {
+    background: #FFF3E0;
+    color: var(--warning);
+  }
+
+  /* Content */
+  p { margin-bottom: 12px; }
+
+  a {
+    color: var(--info);
+    text-decoration: none;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+
+  .note {
+    background: var(--white);
+    border-left: 3px solid var(--info);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+  }
+  .note.warn {
+    border-left-color: var(--warning);
+  }
+
+  /* Code blocks */
+  .code-block {
+    position: relative;
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .code-block .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255,255,255,0.1);
+    border: none;
+    color: var(--code-text);
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .code-block:hover .copy-btn {
+    opacity: 1;
+  }
+  .code-block .copy-btn:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  code {
+    background: var(--bg-secondary);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+  }
+
+  /* Ordered sub-steps */
+  .substeps {
+    padding-left: 20px;
+    margin: 12px 0;
+  }
+  .substeps li {
+    margin-bottom: 10px;
+  }
+
+  /* Screenshots / images placeholder */
+  .screenshot {
+    background: var(--bg-secondary);
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    margin: 12px 0;
+  }
+
+  /* Button link */
+  .btn {
+    display: inline-block;
+    background: var(--accent);
+    color: var(--white);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn:hover {
+    background: var(--accent-hover);
+    text-decoration: none;
+  }
+
+  /* Checklist */
+  .checklist {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+  }
+  .checklist li {
+    padding: 8px 0 8px 28px;
+    position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .checklist li:last-child {
+    border-bottom: none;
+  }
+  .checklist li::before {
+    content: '☐';
+    position: absolute;
+    left: 0;
+    font-size: 16px;
+  }
+
+  /* Table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 14px;
+  }
+  th {
+    background: var(--bg-secondary);
+    text-align: left;
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Header -->
+<div class="hero">
+  <span class="badge">v0.2.0</span>
+  <h1>Lead Ace セットアップガイド</h1>
+  <p>自律型リード獲得プラグインの環境構築手順</p>
+</div>
+
+<!-- Prerequisites -->
+<div class="note">
+  <strong>前提条件:</strong> macOS を使用していること。Anthropic の有料プラン（Pro / Max / Team）に加入していること。
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <h2>目次</h2>
+  <ol>
+    <li><a href="#step1">ツール一括インストール（スクリプト実行）</a></li>
+    <li><a href="#step2">Cursor のインストール</a></li>
+    <li><a href="#step3">Claude Code 拡張機能のセットアップ</a></li>
+    <li><a href="#step4">Google Cloud Console の設定（gog 用）</a></li>
+    <li><a href="#step5">gog CLI の認証設定</a></li>
+    <li><a href="#step6">Gmail Connector の接続</a></li>
+    <li><a href="#step7">Claude in Chrome のインストール</a></li>
+    <li><a href="#step8">Lead Ace プラグインのインストール</a></li>
+    <li><a href="#step9">動作確認</a></li>
+  </ol>
+</div>
+
+<!-- ===== STEP 1 ===== -->
+<div class="step" id="step1">
+  <div class="step-header">
+    <div class="step-number">1</div>
+    <h2>ツール一括インストール</h2>
+    <span class="step-type script">スクリプト</span>
+  </div>
+
+  <p>ターミナルを開いて、以下のコマンドを実行してください。<br>
+  Homebrew・Git・Python3・SQLite3・gog CLI・Claude Code CLI がまとめてインストールされます。</p>
+
+  <div class="note">
+    ターミナルの開き方: Spotlight（<code>⌘ + Space</code>）で「ターミナル」または「terminal」と入力して Enter
+  </div>
+
+  <div class="code-block">curl -fsSL https://raw.githubusercontent.com/aitit-inc/claude-plugins/main/plugins/lead-ace/docs/setup-env.sh | bash<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+
+  <div class="note">
+    各ツールはインストール前に既存チェックを行います。既にインストール済みのものはスキップされるため、何度実行しても安全です。
+  </div>
+
+  <div class="note warn">
+    Homebrew のインストール時にパスワード入力を求められることがあります。Mac のログインパスワードを入力してください。
+  </div>
+</div>
+
+<!-- ===== STEP 2 ===== -->
+<div class="step" id="step2">
+  <div class="step-header">
+    <div class="step-number">2</div>
+    <h2>Cursor のインストール</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <ol class="substeps">
+    <li><a href="https://www.cursor.com/" target="_blank">Cursor 公式サイト</a> にアクセス</li>
+    <li>「Download」ボタンをクリックして <code>.dmg</code> ファイルをダウンロード</li>
+    <li>ダウンロードした <code>.dmg</code> を開き、Cursor を Applications フォルダにドラッグ</li>
+    <li>Cursor を起動して初期セットアップを完了</li>
+  </ol>
+
+  <div class="note">
+    既にインストール済みの場合はスキップしてください。
+  </div>
+</div>
+
+<!-- ===== STEP 3 ===== -->
+<div class="step" id="step3">
+  <div class="step-header">
+    <div class="step-number">3</div>
+    <h2>Claude Code 拡張機能のセットアップ</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <ol class="substeps">
+    <li>Cursor を開く</li>
+    <li>サイドバーの拡張機能アイコン（四角が4つ並んだアイコン）をクリック</li>
+    <li>検索欄で <code>Claude Code</code> と検索</li>
+    <li>「Claude Code」（発行元: Anthropic）をインストール</li>
+    <li>インストール後、サイドバーに Claude Code のアイコンが表示される</li>
+    <li>Claude Code パネルを開き、Anthropic アカウントでログイン</li>
+  </ol>
+
+  <div class="note">
+    拡張機能に CLI がバンドルされているため、Cursor のターミナルからも <code>claude</code> コマンドが使えます。<br>
+    Step 1 で <code>claude-code</code> CLI も別途インストール済みなので、Cursor 外のターミナルでも利用可能です。
+  </div>
+</div>
+
+<!-- ===== STEP 4 ===== -->
+<div class="step" id="step4">
+  <div class="step-header">
+    <div class="step-number">4</div>
+    <h2>Google Cloud Console の設定</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <p>gog CLI でメール送信を自動化するために、Google Cloud の OAuth 認証情報が必要です。</p>
+
+  <div class="note">
+    <strong>gog のセットアップをスキップする場合:</strong> Step 4〜5 を飛ばしても、Step 6 の Gmail Connector を設定すればメールの検索・閲覧・ドラフト作成までは可能です。ただし、メールの自動送信はできないため、下書きを手動で送信する運用になります。
+  </div>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">4-1. プロジェクト作成</h3>
+  <ol class="substeps">
+    <li><a href="https://console.cloud.google.com/projectcreate" target="_blank">Google Cloud Console - プロジェクト作成</a> にアクセス</li>
+    <li>プロジェクト名を入力（例: <code>lead-ace</code>）して「作成」</li>
+  </ol>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">4-2. Gmail API を有効化</h3>
+  <ol class="substeps">
+    <li><a href="https://console.cloud.google.com/apis/api/gmail.googleapis.com" target="_blank">Gmail API のページ</a> にアクセス</li>
+    <li>上部の「有効にする」ボタンをクリック</li>
+  </ol>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">4-3. OAuth 同意画面の設定</h3>
+  <ol class="substeps">
+    <li><a href="https://console.cloud.google.com/auth/branding" target="_blank">OAuth 同意画面</a> にアクセス</li>
+    <li>User Type は「<strong>内部</strong>」を選択（自分のみが利用するため、テストユーザー追加や Google 審査が不要で簡単です）</li>
+    <li>アプリ名（例: <code>Lead Ace</code>）、サポートメールを入力して保存</li>
+  </ol>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">4-4. OAuth クライアント ID の作成</h3>
+  <ol class="substeps">
+    <li><a href="https://console.cloud.google.com/auth/clients/create" target="_blank">認証情報 - クライアント作成</a> にアクセス</li>
+    <li>アプリケーションの種類: <strong>「デスクトップ アプリ」</strong> を選択</li>
+    <li>名前を入力して「作成」</li>
+    <li>作成後、<strong>「JSON をダウンロード」</strong>をクリックして保存<br>
+        （<code>client_secret_XXXX....json</code> というファイルがダウンロードされます）</li>
+  </ol>
+
+  <div class="note warn">
+    ダウンロードした JSON ファイルは次のステップで使います。場所を覚えておいてください。
+  </div>
+</div>
+
+<!-- ===== STEP 5 ===== -->
+<div class="step" id="step5">
+  <div class="step-header">
+    <div class="step-number">5</div>
+    <h2>gog CLI の認証設定</h2>
+    <span class="step-type manual">手動（ターミナル）</span>
+  </div>
+
+  <p>ターミナルで以下のコマンドを順番に実行してください。</p>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">5-1. 認証情報ファイルを登録</h3>
+  <p>ダウンロードした JSON ファイルのパスを指定します（通常は Downloads フォルダにあります）:</p>
+  <div class="code-block">gog auth credentials ~/Downloads/client_secret_*.json<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">5-2. Gmail アカウントを認証</h3>
+  <p>自分のメールアドレスに置き換えて実行してください:</p>
+  <div class="code-block">gog auth add your-email@gmail.com<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+  <p>ブラウザが開くので、Google アカウントでログインして許可してください。</p>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">5-3. 動作確認</h3>
+  <div class="code-block">export GOG_ACCOUNT=your-email@gmail.com
+gog gmail labels list<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+  <p>Gmail のラベル一覧が表示されれば成功です。</p>
+</div>
+
+<!-- ===== STEP 6 ===== -->
+<div class="step" id="step6">
+  <div class="step-header">
+    <div class="step-number">6</div>
+    <h2>Gmail Connector の接続</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <p>Claude から直接 Gmail を検索・閲覧するための公式 Connector を設定します。</p>
+
+  <ol class="substeps">
+    <li><a href="https://claude.ai" target="_blank">claude.ai</a> にアクセスしてログイン</li>
+    <li>新しいチャットを開く</li>
+    <li>入力欄の左にある <strong>「+」ボタン</strong> をクリック</li>
+    <li><strong>「Connectors」</strong> の横の「+」をクリック</li>
+    <li><strong>「Gmail」</strong> を選択</li>
+    <li>「Connect」をクリックして Google アカウントで認証</li>
+  </ol>
+
+  <div class="note">
+    この Connector は claude.ai と Claude Desktop アプリで共有されます。<br>
+    Claude Code（Cursor 内）からも自動的に利用可能になります。
+  </div>
+</div>
+
+<!-- ===== STEP 7 ===== -->
+<div class="step" id="step7">
+  <div class="step-header">
+    <div class="step-number">7</div>
+    <h2>Claude in Chrome のインストール</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <p>Web フォームの自動入力や SNS DM 送信に使用するブラウザ拡張機能です。</p>
+
+  <ol class="substeps">
+    <li><a href="https://chromewebstore.google.com/detail/claude/fcoeoabgfenejglbffodgkkbkcdhcgfn" target="_blank">Chrome Web Store - Claude</a> にアクセス</li>
+    <li>「Chrome に追加」をクリック</li>
+    <li>拡張機能のポップアップで Claude アカウントにログイン</li>
+    <li>Claude Code（Cursor のターミナル）で接続を確認:
+      <div class="code-block">/chrome<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+    </li>
+  </ol>
+
+  <div class="note warn">
+    Chrome または Edge のみ対応です。Brave・Arc 等では動作しません。<br>
+    有料プラン（Pro / Max / Team / Enterprise）が必要です。
+  </div>
+</div>
+
+<!-- ===== STEP 8 ===== -->
+<div class="step" id="step8">
+  <div class="step-header">
+    <div class="step-number">8</div>
+    <h2>Lead Ace プラグインのインストール</h2>
+    <span class="step-type manual">手動（Claude Code 内）</span>
+  </div>
+
+  <p>Cursor を開き、Claude Code パネルのチャット欄に以下を入力して実行します。</p>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">8-1. マーケットプレイスを追加</h3>
+  <div class="code-block">/plugin marketplace add aitit-inc/claude-plugins<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">8-2. プラグインをインストール</h3>
+  <div class="code-block">/plugin install lead-ace@surpassone-plugins<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">8-3. プラグインを反映</h3>
+  <div class="code-block">/reload-plugins<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">8-4. インストール確認</h3>
+  <p>チャット欄に <code>/plugin</code> と入力すると管理画面が開きます。「Installed」タブに <code>lead-ace</code> が表示されていれば成功です。</p>
+</div>
+
+<!-- ===== STEP 9 ===== -->
+<div class="step" id="step9">
+  <div class="step-header">
+    <div class="step-number">9</div>
+    <h2>動作確認</h2>
+    <span class="step-type manual">手動</span>
+  </div>
+
+  <p>セットアップが正しく完了したか確認しましょう。</p>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">9-1. プロジェクトを初期化</h3>
+  <p>Claude Code で営業プロジェクトを作成します:</p>
+  <div class="code-block">/setup test-project<button class="copy-btn" onclick="copyCode(this)">コピー</button></div>
+  <p>ディレクトリと DB が作成されれば OK です。</p>
+
+  <h3 style="margin: 20px 0 12px; font-size: 15px;">9-2. 各ツールの接続確認チェックリスト</h3>
+
+  <ul class="checklist">
+    <li><strong>Claude Code</strong> — Claude Code パネルが応答する</li>
+    <li><strong>gog CLI</strong> — ターミナルで <code>gog gmail labels list</code> が動作する</li>
+    <li><strong>Gmail Connector</strong> — Claude に「最新のメールを確認して」と依頼して応答がある</li>
+    <li><strong>Claude in Chrome</strong> — Claude Code で <code>/chrome</code> を実行して「Connected」と表示される</li>
+    <li><strong>Git</strong> — ターミナルで <code>git --version</code> が表示される</li>
+  </ul>
+</div>
+
+<!-- Summary table -->
+<div style="margin-top: 40px; padding-top: 32px; border-top: 1px solid var(--border);">
+  <h2 style="font-size: 16px; margin-bottom: 16px;">ツール一覧</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>ツール</th>
+        <th>用途</th>
+        <th>必須</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Cursor</strong></td>
+        <td>エディタ / Claude Code のホスト</td>
+        <td>必須</td>
+      </tr>
+      <tr>
+        <td><strong>Claude Code</strong></td>
+        <td>AI エージェント（プラグイン実行基盤）</td>
+        <td>必須</td>
+      </tr>
+      <tr>
+        <td><strong>Python3</strong></td>
+        <td>スクリプト実行</td>
+        <td>必須</td>
+      </tr>
+      <tr>
+        <td><strong>Git</strong></td>
+        <td>データの自動バックアップ</td>
+        <td>推奨</td>
+      </tr>
+      <tr>
+        <td><strong>gog CLI</strong></td>
+        <td>メール送信（Gmail 経由）</td>
+        <td>推奨</td>
+      </tr>
+      <tr>
+        <td><strong>Gmail Connector</strong></td>
+        <td>メール検索・返信確認</td>
+        <td>推奨</td>
+      </tr>
+      <tr>
+        <td><strong>Claude in Chrome</strong></td>
+        <td>フォーム入力・SNS DM</td>
+        <td>推奨</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+function copyCode(btn) {
+  const block = btn.parentElement;
+  const text = block.textContent.replace('コピー', '').trim();
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'コピー済み';
+    setTimeout(() => { btn.textContent = 'コピー'; }, 1500);
+  });
+}
+</script>
+</body>
+</html>
