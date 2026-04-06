@@ -102,7 +102,7 @@ if [[ -f "$SSH_KEY" ]]; then
 else
   info "SSH キーを生成します..."
   echo ""
-  read -p "  GitHub に登録しているメールアドレスを入力してください: " GH_EMAIL
+  read -p "  GitHub に登録しているメールアドレスを入力してください: " GH_EMAIL < /dev/tty
   if [[ -z "$GH_EMAIL" ]]; then
     warn "メールアドレスが未入力のため、SSH キー生成をスキップします"
   else
@@ -120,7 +120,7 @@ if command -v gh &>/dev/null; then
   else
     echo ""
     info "GitHub にログインします（ブラウザが開きます）..."
-    gh auth login -p ssh -w
+    gh auth login -p ssh -w < /dev/tty
   fi
 
   # SSH 公開鍵が GitHub に未登録なら追加
