@@ -96,7 +96,7 @@ fi
 
 # --- SSH キー & GitHub 認証（推奨） ---
 header "GitHub SSH キー設定（推奨）"
-SSH_KEY="$HOME/.ssh/id_ed25519"
+SSH_KEY="$HOME/.ssh/id_ed25519_leadace_github"
 if [[ -f "$SSH_KEY" ]]; then
   success "SSH キーは既に存在します ($SSH_KEY)"
 else
@@ -106,9 +106,17 @@ else
   if [[ -z "$GH_EMAIL" ]]; then
     warn "メールアドレスが未入力のため、SSH キー生成をスキップします"
   else
+    mkdir -p "$HOME/.ssh"
     ssh-keygen -t ed25519 -C "$GH_EMAIL" -f "$SSH_KEY" -N ""
     eval "$(ssh-agent -s)" &>/dev/null
     ssh-add "$SSH_KEY" 2>/dev/null
+    # ~/.ssh/config に GitHub 用の設定を追加
+    if ! grep -q "id_ed25519_leadace_github" "$HOME/.ssh/config" 2>/dev/null; then
+      echo "" >> "$HOME/.ssh/config"
+      echo "Host github.com" >> "$HOME/.ssh/config"
+      echo "  IdentityFile $SSH_KEY" >> "$HOME/.ssh/config"
+      echo "  AddKeysToAgent yes" >> "$HOME/.ssh/config"
+    fi
     success "SSH キーを生成しました"
   fi
 fi
@@ -125,6 +133,11 @@ if command -v gh &>/dev/null; then
 
   # SSH 公開鍵が GitHub に未登録なら追加
   if [[ -f "${SSH_KEY}.pub" ]]; then
+    # admin:public_key スコープが必要 — なければ取得
+    if ! gh ssh-key list &>/dev/null; then
+      info "SSH キー登録のための権限を追加します（ブラウザが開きます）..."
+      gh auth refresh -h github.com -s admin:public_key < /dev/tty
+    fi
     KEY_FINGERPRINT=$(ssh-keygen -lf "${SSH_KEY}.pub" | awk '{print $2}')
     if gh ssh-key list 2>/dev/null | grep -q "$KEY_FINGERPRINT"; then
       success "SSH キーは既に GitHub に登録済みです"
