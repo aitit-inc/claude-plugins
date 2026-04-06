@@ -34,7 +34,7 @@ plugins/<plugin-name>/
 - 言語: 日本語（コード内コメント・ドキュメント共に）
 
 ## リリース
-plugins/sales-agent/.claude-plugin/plugin.json
+plugins/lead-ace/.claude-plugin/plugin.json
 ここのバージョンをあげてコミット＆プッシュする。
 バージョンについて特に指示がなければ、x.y.z のzをインクリメントすること。
 バージョン上げる時は先にコード類をコミットしてから、バージョンアップだけのコミットを作る。

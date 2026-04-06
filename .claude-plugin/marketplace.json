@@ -6,8 +6,8 @@
   "description": "SurpassOne Inc. が提供する Claude Code プラグイン集",
   "plugins": [
     {
-      "name": "sales-agent",
-      "source": "./plugins/sales-agent",
+      "name": "lead-ace",
+      "source": "./plugins/lead-ace",
       "description": "セールス活動の全工程を自動化。戦略策定・営業リスト作成・アウトバウンド営業・結果収集・PDCA改善を一気通貫で実行。"
     }
   ]

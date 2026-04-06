@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sales Agent DB - 共有モジュール（型定義・DB接続・共通操作）"""
+"""Lead Ace DB - 共有モジュール（型定義・DB接続・共通操作）"""
 
 from __future__ import annotations
 

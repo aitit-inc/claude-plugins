@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sales Agent DB 初期化スクリプト
+"""Lead Ace DB 初期化スクリプト
 
 Usage: init_db.py [db_path]
 """

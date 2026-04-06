@@ -1,4 +1,4 @@
--- Sales Agent Database Schema
+-- Lead Ace Database Schema
 
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,

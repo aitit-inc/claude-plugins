@@ -1,4 +1,4 @@
-# sales-agent
+# lead-ace
 
 セールス活動の全工程を自動化する Claude Code プラグイン。
 戦略策定 → 営業リスト作成 → アウトバウンド営業 → 結果収集 → PDCA改善 を一気通貫で実行する。
@@ -18,14 +18,14 @@ Claude Code 内で以下を実行:
 
 ```
 /plugin marketplace add aitit-inc/claude-plugins
-/plugin install sales-agent@surpassone-plugins
+/plugin install lead-ace@surpassone-plugins
 ```
 
 更新する場合:
 
 ```
 /plugin marketplace update
-/plugin update sales-agent@surpassone-plugins
+/plugin update lead-ace@surpassone-plugins
 ```
 
 ### 使い方
