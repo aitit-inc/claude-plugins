@@ -2,132 +2,24 @@
 
 ## 対応済み
 
+### outbound サブエージェントのキックプロンプト改善（2026-04-06）
+daily-cycle Step 7 のサブエージェント起動プロンプトを具体化。ファイル読み込み順の明示、営業方針の直接埋め込み、バッチ間の件名パターン引き継ぎを追加。権限は親セッション（`--dangerously-skip-permissions`）から自動継承されるため、mode 指定は不要。
+
+### form-filling.md の「営業お断り」検出時の処理を明確なSQLに修正（2026-04-06）
+自然言語だった処理を `query_db.py` の具体的コマンドに置換。outreach_logs + project_prospects + prospects の3テーブル更新を明示。
+
+### wpcf7（Contact Form 7）の既知問題を form-filling.md に追記（2026-04-06）
+submit フリーズ → REST API フォールバック、REST API spam 判定 → UI 経由送信の2パターンをエラーハンドリングに追加。
+
+### reCAPTCHA 検出時のステータスとログ記録を明文化（2026-04-06）
+outreach_logs に失敗記録、project_prospects は `new` 維持、同一セッション内再試行禁止のルールを明文化。
+
+### outbound の件名A/Bテスト・本文個別化の強化（2026-04-06）
+outbound SKILL.md のステップ3に件名バリエーション使い分け・本文全体の個別化の明示的指示を追記。
 
 ---
 
 ## すぐ進められるタスク
-
-### 🔴 1. outbound サブエージェントのキックプロンプト改善
-
-**問題:**
-daily-cycle Step 7 でサブエージェントに outbound を実行させる際、キックプロンプトが「outbound/SKILL.md を読んで従え」という間接的な指示のみ。サブエージェントは新しいコンテキストで起動するため、必要なファイルの読み込み順がブレたり、SALES_STRATEGY.md の A/Bテスト指示が遵守されなかったりする。また、確認なし実行の承認がテキストベースのみで、Agent tool の mode パラメータによる制御がされていない。
-
-**対象ファイル:** `skills/daily-cycle/SKILL.md` の Step 7
-
-**修正内容:**
-サブエージェント起動時のプロンプトを以下のように具体化する:
-
-1. **ファイル読み込み順を明示的に指定:**
-   - まず `$0/SALES_STRATEGY.md` と `$0/BUSINESS.md` を読み込む（営業方針・送信者情報の把握）
-   - 次に `${CLAUDE_PLUGIN_ROOT}/skills/outbound/SKILL.md` を読み込む（実行手順）
-   - チャネルに応じて `references/email-guidelines.md` / `references/form-filling.md` を読み込む
-
-2. **キープロンプトに営業方針の要点を直接含める:**
-   - 「件名は SALES_STRATEGY.md の件名パターンからランダムに選択すること」
-   - 「本文冒頭は相手企業の具体的な特徴・業種に言及すること（汎用挨拶だけは不可）」
-   - 「A/Bテスト指示がある場合、バッチ内で複数パターンを均等に使い分けること」
-
-3. **Agent tool の mode パラメータで確認なし実行を保証:**
-   - サブエージェントは親セッションの `permissions.allow` を継承する（調査済み）
-   - daily-cycle が Agent tool を起動する際に `mode: "auto"` を指定するよう SKILL.md に明記する
-   - `auto` mode ではバックグラウンドの安全性チェックのみで、許可済みツールは確認なしで実行される
-   - テキストでの「承認済み」記載も引き続き残す（補助的に）
-   - /setup スキルで、settings.json の permissions.allow に `Bash`, `mcp__claude_in_chrome__computer`, `mcp__claude_in_chrome__form_input` 等が含まれているか確認するステップを追加する
-
-4. **前バッチの結果を次バッチに引き継ぐ:**
-   - 前バッチで使った件名パターンを次バッチのプロンプトに含め、同じパターンの偏りを防ぐ
-
----
-
-### 🔴 2. form-filling.md の「営業お断り」検出時の処理を明確なSQLに修正
-
-**問題:**
-form-filling.md L19-21 の「営業お断り」検出時の処理が自然言語のみで書かれており、テーブル名・カラム名が曖昧。2026-04-06 セッションで AI が `project_prospects.do_not_contact`（存在しないカラム）を更新しようとしてエラーが発生した。また、`project_prospects.status` の更新が指示に含まれていないため、次回 outbound で同じ営業先が再抽出される。
-
-**対象ファイル:** `skills/outbound/references/form-filling.md`
-
-**修正内容:**
-L18-21 のセーフティネット処理を以下の明示的 SQL に置換:
-
-```sql
--- 営業お断り検出時（3テーブルを更新）
-INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status, error_message)
-  VALUES (?, ?, 'form', '', '', 'failed', '営業お断りの記載あり');
-UPDATE project_prospects SET status='unreachable', updated_at=datetime('now')
-  WHERE project_id=? AND prospect_id=?;
-UPDATE prospects SET do_not_contact=1, notes='営業お断りの記載あり（フォームページ）', updated_at=datetime('now')
-  WHERE id=?;
-```
-
-ポイント:
-- `outreach_logs`: 失敗ログを記録（channel='form'）
-- `project_prospects`: status を `unreachable` に更新（再抽出防止）
-- `prospects`: `do_not_contact=1` をグローバルに設定（全プロジェクトで今後アプローチしない）
-
----
-
-### 🟡 3. wpcf7（Contact Form 7）の既知問題を form-filling.md に追記
-
-**問題:**
-2026-04-06 セッションで発見された2パターンが form-filling.md に未文書化のため、AI が毎回試行錯誤する。
-
-**対象ファイル:** `skills/outbound/references/form-filling.md`
-
-**修正内容:**
-エラーハンドリングセクション（L30-34）に以下の2パターンを追記:
-
-**パターンA: wpcf7 REST API が spam 判定を返す場合**
-- 症状: `POST /wp-json/contact-form-7/v1/contact-forms/{id}/feedback` が `status: 'spam'` を返す
-- 原因: REST API 直接呼び出しでは wpcf7 の honeypot / トークン検証に通らない
-- 対処: JavaScript で各フィールドに値をセットし、フォームの submit イベントを発火させる（UI経由送信）
-
-**パターンB: submit クリックでブラウザがフリーズする場合**
-- 症状: `computer` ツールで送信ボタンをクリック後、CDP タイムアウト（約45秒）でタブが応答不能になる
-- 対処: `navigate` でページをリロードし、REST API（`POST /wp-json/contact-form-7/v1/contact-forms/{id}/feedback`）で直接送信する。FormData に `_wpcf7`, `_wpcf7_version`, 各フィールドを含める
-
-**注意:** パターンAとBは逆の対処法。まず UI 経由を試し、フリーズしたら REST API にフォールバックする順序にする。
-
----
-
-### 🟡 4. reCAPTCHA 検出時のステータスとログ記録を明文化
-
-**問題:**
-form-filling.md L33 は「reCAPTCHA等がある場合: スキップしてログに記録」としか書かれていない。outreach_logs の status、project_prospects の status をどうするかが未定義。reCAPTCHA は構造的に送信不可だが、`project_prospects.status` を `new` のまま維持すると永遠に再試行対象になり、`unreachable` にすると将来フォームが改修されて reCAPTCHA が外れた場合に復帰できない。
-
-**対象ファイル:** `skills/outbound/references/form-filling.md`
-
-**修正内容:**
-エラーハンドリングの reCAPTCHA 項目を以下に書き換え:
-
-```
-reCAPTCHA / hCaptcha 等がある場合:
-1. outreach_logs: status='failed', error_message='reCAPTCHAによりスキップ' で記録
-2. project_prospects: status は 'new' のまま維持（フォーム改修で解消する可能性があるため）
-3. 当該フォームのURLに対して、同一セッション内では再試行しない（他チャネルがあればそちらを試す）
-```
-
-理由: `new` のまま維持しても outreach_logs に失敗記録があるため、evaluate で「reCAPTCHA 率」を集計可能。将来的に reCAPTCHA が外れた場合に自動で再試行対象に戻る。同一セッション内での無駄な再試行は outreach_logs の失敗記録で判定して回避する。
-
----
-
-### 🟡 5. outbound の件名A/Bテスト・本文個別化の強化
-
-**問題:**
-outbound SKILL.md L43 に「SALES_STRATEGY.md のA/Bテスト指示に従うこと」と書いてあるが、実際の実行では毎回同じ件名が使われ、本文の冒頭1行だけの差し替えでテンプレ感が強い。
-
-**対象ファイル:** `skills/outbound/SKILL.md`, `skills/outbound/references/email-guidelines.md`
-
-**修正内容:**
-
-outbound SKILL.md のステップ3（メール送信）付近に以下を追記:
-- 「件名は SALES_STRATEGY.md の件名パターンから**ランダムに選択**すること。Python の `random.choice` 等でバッチごとに異なるパターンを使う」
-- 「本文の冒頭は相手企業の**具体的な特徴・業種・最近の取り組み**に言及すること。汎用的な挨拶（"貴社のウェブサイトを拝見し"等）だけでは不十分」
-
-email-guidelines.md にも同様の強化指示がある場合はそちらも更新する。
-
-**備考:** Issue 1（サブエージェントのキックプロンプト改善）でファイル読み込み順の明示・A/Bテスト指示の直接埋め込みを行うため、この問題も一定程度改善される。Issue 1 の対応後に効果を確認してから着手してもよい。
-
----
 
 ### タスクごとのモデル切り替え
 **調査結果: 可能。** agent の frontmatter で `model: sonnet` 等を指定できる。
