@@ -107,7 +107,7 @@ def cmd_recent_outreach(conn: sqlite3.Connection, args: list[str]) -> None:
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " JOIN outreach_logs o ON p.id = o.prospect_id AND o.project_id = pp.project_id"
         " WHERE pp.project_id = ? AND pp.status = 'contacted'"
-        " AND o.sent_at >= datetime('now', '-6 days')"
+        " AND o.sent_at >= datetime('now', 'localtime', '-6 days')"
         " ORDER BY o.sent_at ASC",
         (args[0],),
     )

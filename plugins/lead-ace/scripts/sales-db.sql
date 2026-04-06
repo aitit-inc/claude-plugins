@@ -2,8 +2,8 @@
 
 CREATE TABLE IF NOT EXISTS projects (
     id TEXT PRIMARY KEY,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS prospects (
@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS prospects (
     sns_accounts TEXT,  -- JSON: {"twitter": "...", "linkedin": "...", ...}
     do_not_contact INTEGER NOT NULL DEFAULT 0,  -- 1 = 送付NG（全プロジェクト共通）
     notes TEXT,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
 CREATE TABLE IF NOT EXISTS project_prospects (
@@ -29,8 +29,8 @@ CREATE TABLE IF NOT EXISTS project_prospects (
     match_reason TEXT NOT NULL,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
     priority INTEGER NOT NULL DEFAULT 3,  -- 1=最高 5=最低
     status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (project_id) REFERENCES projects(id),
     FOREIGN KEY (prospect_id) REFERENCES prospects(id),
     UNIQUE(project_id, prospect_id)
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS outreach_logs (
     subject TEXT,
     body TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'sent',  -- sent, failed
-    sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+    sent_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     error_message TEXT,
     FOREIGN KEY (project_id) REFERENCES projects(id),
     FOREIGN KEY (prospect_id) REFERENCES prospects(id)
@@ -57,14 +57,14 @@ CREATE TABLE IF NOT EXISTS responses (
     content TEXT NOT NULL,
     sentiment TEXT NOT NULL,  -- positive, neutral, negative
     response_type TEXT NOT NULL,  -- reply, auto_reply, bounce, meeting_request, rejection, etc.
-    received_at TEXT NOT NULL DEFAULT (datetime('now')),
+    received_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (outreach_log_id) REFERENCES outreach_logs(id)
 );
 
 CREATE TABLE IF NOT EXISTS evaluations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id TEXT NOT NULL,
-    evaluation_date TEXT NOT NULL DEFAULT (datetime('now')),
+    evaluation_date TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     metrics TEXT NOT NULL,  -- JSON: {"total_sent": N, "response_rate": 0.XX, ...}
     findings TEXT NOT NULL,
     improvements TEXT NOT NULL,  -- JSON array of improvement actions

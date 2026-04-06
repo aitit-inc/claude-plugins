@@ -25,12 +25,12 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
 
 # 2. project_prospects のステータスを unreachable に更新（再抽出防止）
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "UPDATE project_prospects SET status='unreachable', updated_at=datetime('now') WHERE project_id=? AND prospect_id=?" \
+  "UPDATE project_prospects SET status='unreachable', updated_at=datetime('now', 'localtime') WHERE project_id=? AND prospect_id=?" \
   "$PROJECT_ID" "$PROSPECT_ID"
 
 # 3. prospects の do_not_contact をグローバルに設定（全プロジェクトで今後アプローチしない）
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "UPDATE prospects SET do_not_contact=1, notes='営業お断りの記載あり（フォームページ）', updated_at=datetime('now') WHERE id=?" \
+  "UPDATE prospects SET do_not_contact=1, notes='営業お断りの記載あり（フォームページ）', updated_at=datetime('now', 'localtime') WHERE id=?" \
   "$PROSPECT_ID"
 ```
 

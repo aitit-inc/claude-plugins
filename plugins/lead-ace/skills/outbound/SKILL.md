@@ -120,7 +120,7 @@ claude-in-chromeを使用してフォームに入力する。`references/form-fi
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, 'form', ?, ?, 'sent')" "$0" "<prospect_id>" "<subject>" "<body>"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 
 ### 5. SNS DM
@@ -149,7 +149,7 @@ claude-in-chromeを使用してSNSでDMを送る。対応プラットフォー�
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "<sns_twitter|sns_linkedin>" "" "<body>"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 
 ### 6. アプローチ不可の営業先の処理
@@ -157,7 +157,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospe
 アプローチに失敗した営業先のうち、**構造的な理由**で今後もアプローチ不可能と判断できる場合は `unreachable` に更新する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'unreachable', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'unreachable', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 
 **`unreachable` にすべきケース:**

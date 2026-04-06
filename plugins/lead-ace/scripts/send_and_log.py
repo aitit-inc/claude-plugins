@@ -142,7 +142,7 @@ def record_result(
     # 送信成功時のみ project_prospects のステータスを更新
     if success:
         update_sql = (
-            "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now')"
+            "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime')"
             + " WHERE project_id = ? AND prospect_id = ?"
         )
         conn.execute(update_sql, (project_id, prospect_id))

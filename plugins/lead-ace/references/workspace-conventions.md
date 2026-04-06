@@ -16,6 +16,21 @@ workspace-root/          ← ここが cwd の初期位置
     └── ...
 ```
 
+## 日時のタイムゾーン
+
+SQLite で日時を扱う際は、常に **`datetime('now', 'localtime')`** を使用すること。`datetime('now')` は UTC になるため使用禁止。
+
+```sql
+-- ○ 正しい
+DEFAULT (datetime('now', 'localtime'))
+updated_at = datetime('now', 'localtime')
+datetime('now', 'localtime', '-6 days')
+
+-- × 使用禁止
+DEFAULT (datetime('now'))
+updated_at = datetime('now')
+```
+
 ## コマンド実行時のルール
 
 - **cdしない。** 全ての bash コマンドはワークスペースルートで実行すること

@@ -117,7 +117,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db data-sufficiency 
 - 反応パターンに基づいてprospectsの優先度を更新
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET priority = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id IN (SELECT id FROM prospects WHERE industry = ?) AND status = 'new'" "<new_priority>" "$0" "<industry>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET priority = ?, updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id IN (SELECT id FROM prospects WHERE industry = ?) AND status = 'new'" "<new_priority>" "$0" "<industry>"
 ```
 
 ### 5. 評価記録の保存

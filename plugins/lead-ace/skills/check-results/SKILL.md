@@ -122,13 +122,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO responses
 `reply` / `auto_reply` / `bounce` / `meeting_request` / `scheduling_confirmation` / `rejection` 等
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "$0" "<prospect_id>"
 ```
 
 **送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、prospects に送付NGフラグを立て、notes に理由を記録する。これは全プロジェクト共通で適用される。
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET do_not_contact = 1, notes = ?, updated_at = datetime('now') WHERE id = ?" "<既存のnotesがあれば保持>送付NG: <理由の要約>" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET do_not_contact = 1, notes = ?, updated_at = datetime('now', 'localtime') WHERE id = ?" "<既存のnotesがあれば保持>送付NG: <理由の要約>" "<prospect_id>"
 ```
 
 単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。
