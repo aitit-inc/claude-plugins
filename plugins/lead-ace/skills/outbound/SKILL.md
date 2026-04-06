@@ -117,19 +117,30 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospe
 
 ### 5. SNS DM
 
-claude-in-chromeを使用してSNSでDMを送る。
+claude-in-chromeを使用してSNSでDMを送る。対応プラットフォーム: **X（Twitter）** および **LinkedIn**。
 
-**手順:**
+**メッセージ:** SNS用に短く簡潔にする。SALES_STRATEGY.mdの「SNSメッセージ」セクションを参考に。
+
+**共通手順:**
 1. prospects.sns_accounts（JSON）からアカウント情報を取得
 2. ブラウザでSNSプロフィールページに移動
 3. DMまたはメッセージ機能を使ってメッセージを送る
 
-**メッセージ:** SNS用に短く簡潔にする。SALES_STRATEGY.mdの「SNSメッセージ」セクションを参考に。
+**X（Twitter）の場合:**
+- プロフィールページからDMアイコン（メッセージ）をクリック
+- 相手のDM受信設定が閉じている場合は送信不可 → `unreachable` にする
+- channel: `sns_twitter`
+
+**LinkedIn の場合:**
+- プロフィールページから「メッセージ」ボタンをクリック
+- コネクション済みの相手のみDM送信可能。未コネクションの場合は送信不可 → `unreachable` にする
+- InMail（有料機能）は使用しない
+- channel: `sns_linkedin`
 
 送信後、outreach_logsに記録し、ステータスを更新する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "sns_twitter" "" "<body>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "<sns_twitter|sns_linkedin>" "" "<body>"
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 

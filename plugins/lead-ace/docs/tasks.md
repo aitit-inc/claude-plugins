@@ -17,6 +17,12 @@ outreach_logs に失敗記録、project_prospects は `new` 維持、同一セ�
 ### outbound の件名A/Bテスト・本文個別化の強化（2026-04-06）
 outbound SKILL.md のステップ3に件名バリエーション使い分け・本文全体の個別化の明示的指示を追記。
 
+### evaluate → SEARCH_NOTES フィードバックループ追加（2026-04-06）
+evaluate の改善適用ステップに SEARCH_NOTES.md への反応パターン追記を追加。反応が良い業種・セグメントを「次回に試すべき方向性」として build-list に自動フィードバック。
+
+### LinkedIn DM 対応（2026-04-06）
+outbound Step 5 に LinkedIn DM 手順を追加（コネクション済みのみ、InMail不使用）。check-results に LinkedIn メッセージ画面の確認手順を追加。strategy-template に SNS ログイン案内を追加。
+
 ---
 
 ## すぐ進められるタスク
@@ -84,9 +90,5 @@ Python3 は macOS にプリインストールされており、Windows でも Cl
 
 ## アイディア
 
-build-listで探すときのテクニックとして、これまで反応があった会社・組織と近い会社や競合などを探すのはありかも。
-strategyで最初に戦略作るときにやることか？build-listか？それともevaluateか？
-
-X/LinkedIn対応！！（claude in Chromeでやって、ってかくぐらいだと思うけど。）
-・あとは、strategyの時に、chromeでXとLinkedInのアカウントにログインしておいて、って言うぐらいかな？
+（なし）
 
