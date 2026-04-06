@@ -65,14 +65,16 @@ def is_paid() -> bool:
 
 
 def register_project(project_path: str) -> str:
-    """プロジェクトの絶対パスを ~/.leadace/projects に追記（重複チェックあり）
-    Returns: "REGISTERED" or "ALREADY_REGISTERED"
+    """プロジェクトの絶対パスを ~/.leadace/projects に追記（重複・ライセンスチェックあり）
+    Returns: "REGISTERED" / "ALREADY_REGISTERED" / "FREE_LIMIT"
     """
     ensure_leadace_dir()
     path = os.path.abspath(project_path)
     projects = list_projects()
     if path in projects:
         return "ALREADY_REGISTERED"
+    if not is_paid() and len(projects) >= 1:
+        return "FREE_LIMIT"
     with open(PROJECTS_FILE, "a") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
         f.write(path + "\n")
