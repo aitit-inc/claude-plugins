@@ -1,7 +1,7 @@
 # lead-ace
 
-セールス活動の全工程を自動化する Claude Code プラグイン。
-戦略策定 → 営業リスト作成 → アウトバウンド営業 → 結果収集 → PDCA改善 を一気通貫で実行する。
+Autonomous lead generation plugin for Claude Code.
+Builds prospect lists, runs outbound outreach, and iterates on strategy — all hands-free.
 
 ## 利用者向け
 

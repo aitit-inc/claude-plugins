@@ -14,7 +14,7 @@ Claude Code 内で以下を実行:
 
 | プラグイン | 概要 |
 |---|---|
-| [lead-ace](./plugins/lead-ace/) | セールス活動の全工程を自動化（戦略策定・リスト作成・アウトバウンド・結果収集・PDCA改善） |
+| [lead-ace](./plugins/lead-ace/) | Autonomous lead generation — builds prospect lists, runs outbound outreach, and iterates on strategy hands-free |
 
 インストール例:
 
