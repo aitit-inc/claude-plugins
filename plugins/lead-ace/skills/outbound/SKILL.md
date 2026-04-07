@@ -194,7 +194,20 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospe
 - 一時的なネットワークエラーやタイムアウト
 - gog send の認証エラーなどシステム側の問題
 
-### 7. 結果レポート
+### 7. 目標未達時の追加アプローチ
+
+全営業先の処理が完了した後、成功数（sent）が目標件数に満たない場合:
+
+1. 不足数 = 目標件数 - 成功数
+2. `list-reachable` で追加の営業先を取得する（不足数分）:
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db list-reachable "$0" <不足数>
+   ```
+3. 取得できた営業先に対してステップ2〜6を繰り返す
+4. リトライは**1ラウンドのみ**。reachable が 0 になった場合もリトライを終了する
+5. 最終的な目標達成状況をレポートに含める（例: 「目標5件中3件成功（リスト枯渇のため終了）」）
+
+### 8. 結果レポート
 
 以下を報告する:
 - アプローチした営業先数
