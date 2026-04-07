@@ -30,7 +30,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
 
 - プロジェクトディレクトリ名: `$0`（必須）
 
-`references/evaluation-queries.sql` のクエリテンプレートを使い、`$0` のプロジェクトIDを取得して置換し、順次実行する。各クエリの結果を分析用に保持する。
+`${CLAUDE_PLUGIN_ROOT}/skills/evaluate/references/evaluation-queries.sql` のクエリテンプレートを使い、各クエリの `?` プレースホルダに `$0` を渡して `query_db.py` で順次実行する。各クエリの結果を分析用に保持する。
+
+実行例:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as total_outreach FROM outreach_logs WHERE project_id = ?" "$0"
+```
 
 ### 2. 既存戦略の読み込み
 
@@ -104,14 +110,14 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db data-sufficiency 
 - 効果が低いキーワードの削除
 
 **SEARCH_NOTES.md への反応パターン反映:**
-`$0/SEARCH_NOTES.md` が存在する場合、「次回に試すべき方向性」セクションに反応パターンから得られた探索ヒントを追記する。build-list が次回実行時にこれを参照して探索方針を調整する。
+`$0/SEARCH_NOTES.md` が存在する場合、`## evaluate からの探索ヒント` セクションを上書き更新する（セクションがなければ末尾に追加）。build-list が次回実行時にこのセクションを保持して探索方針を調整する。
 
 追記する内容:
 - 反応率が全体平均より高い業種・セグメント → 「○○業から反応率X%（全体平均Y%）。同業種を重点的に探索する」
 - 反応があった企業と類似した特徴（規模感、事業内容、課題感） → 「○○のような企業が反応しやすい。類似企業・競合を探す」
 - 反応が悪かったセグメント → 「○○業は反応率が低い（X%）。優先度を下げる」
 
-追記は既存の SEARCH_NOTES.md の内容を保持したまま末尾に追加する形にする。SEARCH_NOTES.md が存在しない場合はスキップする（build-list 未実行の状態なので）。
+SEARCH_NOTES.md が存在しない場合はスキップする（build-list 未実行の状態なので）。
 
 **優先度の再計算:**
 - 反応パターンに基づいてprospectsの優先度を更新

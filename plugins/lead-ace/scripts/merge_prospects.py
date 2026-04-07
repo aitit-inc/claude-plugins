@@ -17,24 +17,16 @@ Output (stderr): マージ結果のサマリー
 from __future__ import annotations
 
 import json
-import re
 import sys
 
-from sales_db import error_exit, print_json  # pyright: ignore[reportMissingModuleSource]
-
-
-def extract_domain(url: str) -> str:
-    """URLからドメインを抽出する。"""
-    domain = re.sub(r"^https?://", "", url)
-    domain = re.sub(r"^www\.", "", domain)
-    domain = domain.split("/")[0]
-    return domain.lower()
+from sales_db import error_exit, extract_domain, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 def make_key(entry: dict[str, object]) -> str:
     """company_name + domain でマッチキーを生成する。"""
     name = str(entry.get("company_name", "")).strip()
-    url = str(entry.get("website_url", ""))
+    raw_url = entry.get("website_url")
+    url = str(raw_url) if isinstance(raw_url, str) else ""
     domain = extract_domain(url) if url else ""
     return f"{name}|{domain}"
 

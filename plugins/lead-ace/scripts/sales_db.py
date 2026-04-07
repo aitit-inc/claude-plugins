@@ -5,8 +5,10 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sqlite3
 import sys
+import unicodedata
 from typing import NoReturn, TypedDict
 
 
@@ -128,3 +130,20 @@ def error_exit(message: str, code: int = 1) -> NoReturn:
     """エラーメッセージを stderr に出力して終了する。"""
     print(f"ERROR: {message}", file=sys.stderr)
     sys.exit(code)
+
+
+# ---------------------------------------------------------------------------
+# 文字列ユーティリティ
+# ---------------------------------------------------------------------------
+
+def normalize_name(name: str) -> str:
+    """企業名を正規化する。全角→半角変換、小文字化、前後空白除去。"""
+    return unicodedata.normalize("NFKC", name).lower().strip()
+
+
+def extract_domain(url: str) -> str:
+    """URLからドメインを抽出する。プロトコル・www・パスを除去し、小文字化する。"""
+    domain = re.sub(r"^https?://", "", url, flags=re.IGNORECASE)
+    domain = re.sub(r"^www\.", "", domain, flags=re.IGNORECASE)
+    domain = domain.split("/")[0]
+    return domain.lower()

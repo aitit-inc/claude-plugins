@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS project_prospects (
     prospect_id INTEGER NOT NULL,
     match_reason TEXT NOT NULL,  -- なぜこの営業先がターゲットとして適切か（相手の課題・ニーズも含めて記述）
     priority INTEGER NOT NULL DEFAULT 3,  -- 1=最高 5=最低
-    status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive
+    status TEXT NOT NULL DEFAULT 'new',  -- new, contacted, responded, converted, rejected, inactive, unreachable
     created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
     FOREIGN KEY (project_id) REFERENCES projects(id),

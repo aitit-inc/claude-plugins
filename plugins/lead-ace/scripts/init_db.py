@@ -24,7 +24,6 @@ def main() -> None:
     conn = get_connection(db_path)
     try:
         conn.executescript(schema_sql)
-        conn.commit()
     finally:
         conn.close()
 

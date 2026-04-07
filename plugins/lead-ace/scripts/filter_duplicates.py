@@ -18,18 +18,9 @@ Output (stderr): フィルタ結果のサマリー
 from __future__ import annotations
 
 import json
-import re
 import sys
 
-from sales_db import error_exit, get_connection, print_json, rows_to_dicts  # pyright: ignore[reportMissingModuleSource]
-
-
-def extract_domain(url: str) -> str:
-    """URLからドメインを抽出する。プロトコル・www・パスを除去。"""
-    domain = re.sub(r"^https?://", "", url)
-    domain = re.sub(r"^www\.", "", domain)
-    domain = domain.split("/")[0]
-    return domain.lower()
+from sales_db import error_exit, extract_domain, get_connection, normalize_name, print_json, rows_to_dicts  # pyright: ignore[reportMissingModuleSource]
 
 
 def main() -> None:
@@ -61,10 +52,10 @@ def main() -> None:
         conn.close()
 
     existing_names: set[str] = {
-        row["company_name"] for row in existing if row.get("company_name")
+        normalize_name(str(row["company_name"])) for row in existing if row.get("company_name")
     }
     existing_domains: set[str] = {
-        extract_domain(row["website_url"])
+        extract_domain(str(row["website_url"]))
         for row in existing
         if row.get("website_url")
     }
@@ -76,14 +67,14 @@ def main() -> None:
         if not isinstance(candidate, dict):
             continue
 
-        name = candidate.get("company_name", "")
+        raw_name = candidate.get("company_name", "")
         url = candidate.get("website_url", "")
         domain = extract_domain(url) if url else ""
 
-        if name in existing_names:
-            duplicates.append({"company_name": name, "reason": "名称完全一致"})
+        if normalize_name(raw_name) in existing_names:
+            duplicates.append({"company_name": raw_name, "reason": "名称一致"})
         elif domain and domain in existing_domains:
-            duplicates.append({"company_name": name, "reason": f"ドメイン一致: {domain}"})
+            duplicates.append({"company_name": raw_name, "reason": f"ドメイン一致: {domain}"})
         else:
             new_candidates.append(candidate)
 

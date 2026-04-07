@@ -13,9 +13,25 @@ UPDATE/DELETE の場合は {"rows_affected": <count>} を出力する。
 
 from __future__ import annotations
 
+import re
 import sys
 
 from sales_db import error_exit, get_connection, print_json, rows_to_dicts
+
+
+def detect_stmt_type(sql: str) -> str:
+    """SQL文の種別を判定する。コメントや WITH 句を考慮する。"""
+    # 行コメント (-- ...) を除去
+    clean = re.sub(r"--[^\n]*", "", sql).strip().upper()
+    if not clean:
+        return "UNKNOWN"
+    first = clean.split()[0]
+    # WITH ... SELECT のケース
+    if first == "WITH":
+        if "SELECT" in clean:
+            return "SELECT"
+        return "UNKNOWN"
+    return first
 
 
 def main() -> None:
@@ -30,7 +46,7 @@ def main() -> None:
     try:
         cursor = conn.execute(sql, params)
 
-        stmt_type = sql.strip().upper().split()[0]
+        stmt_type = detect_stmt_type(sql)
         if stmt_type == "SELECT":
             rows = cursor.fetchall()
             print_json(rows_to_dicts(rows))

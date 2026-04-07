@@ -1,19 +1,24 @@
 #!/usr/bin/env python3
-"""メール送信+ログ記録のアトミック実行スクリプト
+"""送信ログ記録のアトミック実行スクリプト
 
-Usage:
+Usage (メール送信モード):
   python3 send_and_log.py <db_path> --project <id> --prospect-id <id> \
     --account <email> --to <email> --subject <subject> \
     [--body <text> | --body-file <path>] [--from <alias>] [--cc <emails>]
 
-gog send でメールを送信し、結果をDBに記録する。
-成功時: outreach_logs (status='sent') + project_prospects (status='contacted') を1トランザクションで更新
-失敗時: outreach_logs (status='failed', error_message) を記録
+Usage (ログ記録のみモード - フォーム/SNS用):
+  python3 send_and_log.py <db_path> --project <id> --prospect-id <id> \
+    --log-only --channel <form|sns_twitter|sns_linkedin> \
+    --subject <subject> [--body <text> | --body-file <path>] \
+    [--status <sent|failed>] [--error-message <msg>]
+
+メール送信モード: gog send でメール送信し、結果をDBに記録する。
+ログ記録モード: 送信処理は行わず、ログ記録+ステータス更新のみを1トランザクションで実行する。
 
 Output: JSON
   {"status": "sent"|"failed", "outreach_log_id": N, "error_message": null|"..."}
 
-Exit code: 0 = 送信成功, 1 = 送信失敗（ログは記録済み）, 2 = スクリプトエラー
+Exit code: 0 = 成功, 1 = 失敗（ログは記録済み）, 2 = スクリプトエラー
 """
 
 from __future__ import annotations
@@ -43,22 +48,25 @@ class SendResult(TypedDict):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description=(
-            "メール送信+ログ記録のアトミック実行。"
-            + "gog send でメール送信し、結果をDBに記録する。"
-        ),
+        description="送信ログ記録のアトミック実行。メール送信 or ログ記録のみ。",
     )
     _ = parser.add_argument("db_path", help="SQLite データベースのパス")
     _ = parser.add_argument("--project", required=True, help="プロジェクトID")
     _ = parser.add_argument("--prospect-id", type=int, required=True, help="営業先ID")
-    _ = parser.add_argument("--account", required=True, help="送信元メールアドレス（gog --account）")
-    _ = parser.add_argument("--to", required=True, dest="to_addr", help="宛先メールアドレス")
     _ = parser.add_argument("--subject", required=True, help="件名")
-    body_group = parser.add_mutually_exclusive_group(required=True)
+    body_group = parser.add_mutually_exclusive_group()
     _ = body_group.add_argument("--body", help="本文（短い場合）")
     _ = body_group.add_argument("--body-file", help="本文ファイルパス（長い場合）")
+    # メール送信モード用
+    _ = parser.add_argument("--account", help="送信元メールアドレス（gog --account）")
+    _ = parser.add_argument("--to", dest="to_addr", help="宛先メールアドレス")
     _ = parser.add_argument("--from", dest="from_addr", help="送信元エイリアス（gog --from）")
     _ = parser.add_argument("--cc", help="CCアドレス（カンマ区切り）")
+    # ログ記録のみモード用
+    _ = parser.add_argument("--log-only", action="store_true", help="送信せずログ記録+ステータス更新のみ")
+    _ = parser.add_argument("--channel", help="チャネル名（log-only時必須。form/sns_twitter/sns_linkedin）")
+    _ = parser.add_argument("--status", default="sent", choices=["sent", "failed"], help="記録するステータス（log-only時、デフォルト: sent）")
+    _ = parser.add_argument("--error-message", help="エラーメッセージ（log-only + status=failed 時）")
     return parser
 
 
@@ -118,6 +126,7 @@ def record_result(
     conn: sqlite3.Connection,
     project_id: str,
     prospect_id: int,
+    channel: str,
     subject: str,
     body_text: str,
     success: bool,
@@ -129,11 +138,11 @@ def record_result(
     insert_sql = (
         "INSERT INTO outreach_logs"
         + " (project_id, prospect_id, channel, subject, body, status, error_message)"
-        + " VALUES (?, ?, 'email', ?, ?, ?, ?)"
+        + " VALUES (?, ?, ?, ?, ?, ?, ?)"
     )
     cursor = conn.execute(
         insert_sql,
-        (project_id, prospect_id, subject, body_text, status, error_message),
+        (project_id, prospect_id, channel, subject, body_text, status, error_message),
     )
     log_id = cursor.lastrowid
     if log_id is None:
@@ -145,7 +154,12 @@ def record_result(
             "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime')"
             + " WHERE project_id = ? AND prospect_id = ?"
         )
-        conn.execute(update_sql, (project_id, prospect_id))
+        cursor_upd = conn.execute(update_sql, (project_id, prospect_id))
+        if cursor_upd.rowcount == 0:
+            print(
+                f"WARNING: project_prospects に該当行なし (project_id={project_id}, prospect_id={prospect_id})",
+                file=sys.stderr,
+            )
 
     conn.commit()
     return log_id
@@ -157,33 +171,45 @@ def main() -> None:
     db_path: str = args.db_path
     project_id: str = args.project
     prospect_id: int = args.prospect_id
-    account: str = args.account
-    to_addr: str = args.to_addr
     subject: str = args.subject
     body: str | None = args.body
     body_file: str | None = args.body_file
-    from_addr: str | None = args.from_addr
-    cc: str | None = args.cc
+    log_only: bool = args.log_only
 
     # 本文取得（DB記録用）
     body_text = read_body(body, body_file)
 
-    # メール送信
-    success, error_message = send_email(
-        account=account,
-        to_addr=to_addr,
-        subject=subject,
-        body=body,
-        body_file=body_file,
-        from_addr=from_addr,
-        cc=cc,
-    )
+    if log_only:
+        # ログ記録のみモード（フォーム/SNS用）
+        channel: str = args.channel
+        if not channel:
+            error_exit("--log-only 時は --channel が必須です")
+        success = args.status == "sent"
+        error_message: str | None = args.error_message
+    else:
+        # メール送信モード
+        channel = "email"
+        account: str | None = args.account
+        to_addr: str | None = args.to_addr
+        if not account or not to_addr:
+            error_exit("メール送信モードでは --account と --to が必須です")
+        if not body and not body_file:
+            error_exit("--body または --body-file が必須です")
+        success, error_message = send_email(
+            account=account,
+            to_addr=to_addr,
+            subject=subject,
+            body=body,
+            body_file=body_file,
+            from_addr=args.from_addr,
+            cc=args.cc,
+        )
 
     # DB記録
     conn = get_connection(db_path)
     try:
         log_id = record_result(
-            conn, project_id, prospect_id, subject, body_text, success, error_message,
+            conn, project_id, prospect_id, channel, subject, body_text, success, error_message,
         )
     except Exception as e:
         conn.rollback()

@@ -166,3 +166,13 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET 
 - 次のステップとして `/evaluate` の実行を案内する
 
 レポートをプロジェクトディレクトリに `RESULTS_REPORT.md` として保存する（追記モード）。
+
+**追記フォーマット:** 各回の結果を `---` セパレータと日付ヘッダで区切る:
+
+```markdown
+---
+## YYYY-MM-DD HH:MM
+（上記レポート内容）
+```
+
+**ローテーション:** 追記前にファイルの行数を確認し、500行を超えている場合は古い方から半分を削除してから追記する。

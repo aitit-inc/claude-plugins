@@ -39,7 +39,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
 ### 1. 準備
 
 - プロジェクトディレクトリ名: `$0`（必須）
-- アプローチ件数: `$1`（省略時: 全件）
+- アプローチ件数: `$1`（省略時: 30）
 
 `$0/BUSINESS.md` と `$0/SALES_STRATEGY.md` を読み込み、以下のセクションを特に注意して把握する:
 - **営業チャネル**: チャネルの優先順位、使わないチャネル
@@ -57,7 +57,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db list-reachable "$0" "$1"
 ```
 
-件数の指定がない場合は全件を対象とする。
+件数の指定がない場合はデフォルトの30件を対象とする。
 
 ### 2. 各営業先へのアプローチ
 
@@ -116,11 +116,21 @@ claude-in-chromeを使用してフォームに入力する。`references/form-fi
 
 **送信本文の検証:** outreach_logs に記録する前に、フォームに入力した本文（body）が空でないことを確認する。空の場合は送信失敗として `status = 'failed'`, `error_message = 'body empty'` で記録し、ステータスは `new` のまま維持する。
 
-送信成功時、outreach_logsに記録し、ステータスを更新する:
+送信成功時、`send_and_log.py --log-only` でログ記録+ステータス更新をアトミックに実行する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, 'form', ?, ?, 'sent')" "$0" "<prospect_id>" "<subject>" "<body>"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$0" --prospect-id <prospect_id> --log-only \
+  --channel form --subject "<subject>" --body "<body>"
+```
+
+送信失敗時:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$0" --prospect-id <prospect_id> --log-only \
+  --channel form --subject "<subject>" --body "<body>" \
+  --status failed --error-message "<理由>"
 ```
 
 ### 5. SNS DM
@@ -145,11 +155,12 @@ claude-in-chromeを使用してSNSでDMを送る。対応プラットフォー�
 - InMail（有料機能）は使用しない
 - channel: `sns_linkedin`
 
-送信後、outreach_logsに記録し、ステータスを更新する:
+送信後、`send_and_log.py --log-only` でログ記録+ステータス更新をアトミックに実行する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status) VALUES (?, ?, ?, ?, ?, 'sent')" "$0" "<prospect_id>" "<sns_twitter|sns_linkedin>" "" "<body>"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'contacted', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$0" --prospect-id <prospect_id> --log-only \
+  --channel <sns_twitter|sns_linkedin> --subject "" --body "<body>"
 ```
 
 ### 6. アプローチ不可の営業先の処理

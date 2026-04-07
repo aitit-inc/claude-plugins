@@ -32,6 +32,8 @@ plugins/<plugin-name>/
 - 各プラグインは独立して動作すること（プラグイン間の依存禁止）
 - パス参照は `${CLAUDE_PLUGIN_ROOT}` を使い、ハードコードしない
 - 言語: 日本語（コード内コメント・ドキュメント共に）
+- Python スクリプトの CLI インターフェースは `argparse` で統一する（`sys.argv` 直接参照は使わない）
+- Python スクリプトでは型定義をしっかりすること。anyは禁止。なるべく型キャストは避け、正しく型推論できるようにすること
 
 ## リリース
 plugins/lead-ace/.claude-plugin/plugin.json

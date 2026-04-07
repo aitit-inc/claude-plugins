@@ -35,15 +35,13 @@ AskUserQuestion で「ローカルの data.db からもこのプロジェクト�
 
 ### 4. ローカルデータの削除（ユーザーが承諾した場合のみ）
 
-data.db の該当プロジェクトのレコードを削除する:
+data.db の該当プロジェクトのレコードを1トランザクションで削除する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "DELETE FROM responses WHERE outreach_log_id IN (SELECT id FROM outreach_logs WHERE project_id = ?)" "$0"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "DELETE FROM outreach_logs WHERE project_id = ?" "$0"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "DELETE FROM evaluations WHERE project_id = ?" "$0"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "DELETE FROM project_prospects WHERE project_id = ?" "$0"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "DELETE FROM projects WHERE id = ?" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/delete_project.py data.db "$0"
 ```
+
+※ prospects テーブルのレコードは他プロジェクトで再利用される可能性があるため削除しない。
 
 ### 5. 完了報告
 

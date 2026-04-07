@@ -18,19 +18,18 @@
 フォームページを読み込んだ際に、ページ内に「営業お断り」「営業目的のお問い合わせはご遠慮ください」「セールスお断り」等の記載がないか確認する。**発見した場合はフォーム送信を中止**し、以下の3テーブルを更新して次の営業先に進む:
 
 ```bash
-# 1. outreach_logs に失敗ログを記録
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status, error_message) VALUES (?, ?, 'form', '', '', 'failed', '営業お断りの記載あり')" \
-  "$PROJECT_ID" "$PROSPECT_ID"
+# 1. outreach_logs に失敗ログを記録（project_prospects は new のまま）
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$PROJECT_ID" --prospect-id $PROSPECT_ID --log-only \
+  --channel form --subject "" --body "" \
+  --status failed --error-message "営業お断りの記載あり"
 
-# 2. project_prospects のステータスを unreachable に更新（再抽出防止）
+# 2. project_prospects を unreachable に更新 + prospects の do_not_contact をグローバルに設定
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
   "UPDATE project_prospects SET status='unreachable', updated_at=datetime('now', 'localtime') WHERE project_id=? AND prospect_id=?" \
   "$PROJECT_ID" "$PROSPECT_ID"
-
-# 3. prospects の do_not_contact をグローバルに設定（全プロジェクトで今後アプローチしない）
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "UPDATE prospects SET do_not_contact=1, notes='営業お断りの記載あり（フォームページ）', updated_at=datetime('now', 'localtime') WHERE id=?" \
+  "UPDATE prospects SET do_not_contact=1, notes = CASE WHEN notes IS NOT NULL AND notes != '' THEN notes || CHAR(10) || '営業お断りの記載あり（フォームページ）' ELSE '営業お断りの記載あり（フォームページ）' END, updated_at=datetime('now', 'localtime') WHERE id=?" \
   "$PROSPECT_ID"
 ```
 
@@ -51,10 +50,11 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
 フォームに reCAPTCHA、hCaptcha、Turnstile 等の CAPTCHA が設置されている場合、フォーム送信はスキップし、以下を実行する:
 
 ```bash
-# outreach_logs に失敗ログを記録
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "INSERT INTO outreach_logs (project_id, prospect_id, channel, subject, body, status, error_message) VALUES (?, ?, 'form', '', '', 'failed', 'reCAPTCHAによりスキップ')" \
-  "$PROJECT_ID" "$PROSPECT_ID"
+# outreach_logs に失敗ログを記録（ステータスは new のまま維持するため --status failed を指定）
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
+  --project "$PROJECT_ID" --prospect-id $PROSPECT_ID --log-only \
+  --channel form --subject "" --body "" \
+  --status failed --error-message "reCAPTCHAによりスキップ"
 ```
 
 - `project_prospects.status` は **`new` のまま維持**する（フォーム改修で CAPTCHA が外れる可能性があるため）

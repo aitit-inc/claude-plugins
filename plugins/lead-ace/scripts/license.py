@@ -70,15 +70,17 @@ def register_project(project_path: str) -> str:
     """
     ensure_leadace_dir()
     path = os.path.abspath(project_path)
-    projects = list_projects()
-    if path in projects:
-        return "ALREADY_REGISTERED"
-    if not is_paid() and len(projects) >= 1:
-        return "FREE_LIMIT"
-    with open(PROJECTS_FILE, "a") as f:
+    # 読み取りと書き込みを同一ロック内で行い、TOCTOU競合を防ぐ
+    with open(PROJECTS_FILE, "a+") as f:
         fcntl.flock(f, fcntl.LOCK_EX)
+        f.seek(0)
+        lines = f.readlines()
+        projects = [l.strip() for l in lines if l.strip()]
+        if path in projects:
+            return "ALREADY_REGISTERED"
+        if not is_paid() and len(projects) >= 1:
+            return "FREE_LIMIT"
         f.write(path + "\n")
-        fcntl.flock(f, fcntl.LOCK_UN)
     return "REGISTERED"
 
 
@@ -101,7 +103,7 @@ def unregister_project(project_path: str) -> bool:
     return True
 
 
-def list_projects() -> list:
+def list_projects() -> list[str]:
     """~/.leadace/projects から全プロジェクトパスをリストで返す"""
     if not PROJECTS_FILE.exists():
         return []

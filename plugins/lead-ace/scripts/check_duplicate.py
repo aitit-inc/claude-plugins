@@ -22,24 +22,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
+import sqlite3
 import sys
 
-from sales_db import DuplicateMatch, get_connection
+from sales_db import DuplicateMatch, extract_domain, get_connection, normalize_name
 
 
-def extract_domain(url: str) -> str:
-    """URLからドメインを抽出する。プロトコル・www・パスを除去。"""
-    domain = re.sub(r"^https?://", "", url)
-    domain = re.sub(r"^www\.", "", domain)
-    domain = domain.split("/")[0]
-    return domain
-
-
-def check_email(conn: object, email: str) -> list[DuplicateMatch]:
+def check_email(conn: sqlite3.Connection, email: str) -> list[DuplicateMatch]:
     """email 完全一致チェック"""
-    import sqlite3
-    assert isinstance(conn, sqlite3.Connection)
     cursor = conn.execute(
         "SELECT id, company_name FROM prospects WHERE email = ?",
         (email,),
@@ -55,10 +45,13 @@ def check_email(conn: object, email: str) -> list[DuplicateMatch]:
     ]
 
 
-def check_sns(conn: object, sns_key: str, sns_value: str) -> list[DuplicateMatch]:
+ALLOWED_SNS_KEYS = {"twitter", "x", "linkedin", "facebook", "instagram"}
+
+
+def check_sns(conn: sqlite3.Connection, sns_key: str, sns_value: str) -> list[DuplicateMatch]:
     """SNS アカウント完全一致チェック（json_extract 使用）"""
-    import sqlite3
-    assert isinstance(conn, sqlite3.Connection)
+    if sns_key not in ALLOWED_SNS_KEYS:
+        return []
     cursor = conn.execute(
         "SELECT id, company_name FROM prospects "
         "WHERE sns_accounts IS NOT NULL "
@@ -76,10 +69,8 @@ def check_sns(conn: object, sns_key: str, sns_value: str) -> list[DuplicateMatch
     ]
 
 
-def check_corporate_number(conn: object, number: str) -> list[DuplicateMatch]:
+def check_corporate_number(conn: sqlite3.Connection, number: str) -> list[DuplicateMatch]:
     """法人番号完全一致チェック"""
-    import sqlite3
-    assert isinstance(conn, sqlite3.Connection)
     cursor = conn.execute(
         "SELECT id, company_name FROM prospects WHERE corporate_number = ?",
         (number,),
@@ -95,26 +86,25 @@ def check_corporate_number(conn: object, number: str) -> list[DuplicateMatch]:
     ]
 
 
-def check_company_name(conn: object, name: str) -> list[DuplicateMatch]:
-    """名称完全一致チェック"""
-    import sqlite3
-    assert isinstance(conn, sqlite3.Connection)
+def check_company_name(conn: sqlite3.Connection, name: str) -> list[DuplicateMatch]:
+    """名称一致チェック（全角半角・大文字小文字を正規化して比較）"""
+    normalized = normalize_name(name)
     cursor = conn.execute(
-        "SELECT id, company_name FROM prospects WHERE company_name = ?",
-        (name,),
+        "SELECT id, company_name FROM prospects",
     )
     return [
         DuplicateMatch(
             match_type="EXACT_MATCH",
             prospect_id=row["id"],
             company_name=row["company_name"],
-            reason="名称完全一致",
+            reason="名称一致",
         )
         for row in cursor
+        if normalize_name(row["company_name"]) == normalized
     ]
 
 
-def check_website_domain(conn: object, url: str) -> list[DuplicateMatch]:
+def check_website_domain(conn: sqlite3.Connection, url: str) -> list[DuplicateMatch]:
     """ウェブサイトのドメイン一致チェック"""
     import sqlite3
     assert isinstance(conn, sqlite3.Connection)
