@@ -8,6 +8,8 @@ Phase 1（候補収集）の出力と Phase 2（連絡先取得）の出力を
 company_name + website_url のドメインで突き合わせてマージし、
 add_prospects.py に渡せる形式でstdoutに出力する。
 
+ドメインでマッチしない場合は company_name のみでフォールバックマッチする
+（連絡先側に website_url が欠損しているケースへの対策）。
 マッチしなかった候補は連絡先なし（email=null等）のまま出力する。
 
 Output (stdout): マージ済みJSON配列
@@ -31,8 +33,13 @@ def make_key(entry: dict[str, object]) -> str:
     return f"{name}|{domain}"
 
 
+def name_only_key(entry: dict[str, object]) -> str:
+    """company_name のみのフォールバックキーを生成する。"""
+    return str(entry.get("company_name", "")).strip()
+
+
 # 連絡先フィールド（Phase 2 で取得されるもの）
-CONTACT_FIELDS = ("email", "contact_form_url", "sns_accounts")
+CONTACT_FIELDS = ("email", "contact_form_url", "form_type", "sns_accounts")
 
 
 def main() -> None:
@@ -57,15 +64,20 @@ def main() -> None:
     if not isinstance(candidates, list) or not isinstance(contacts, list):
         error_exit("両方のファイルがJSON配列である必要があります")
 
-    # 連絡先をキーでインデックス化
+    # 連絡先をキーでインデックス化（主キー: name+domain、フォールバック: name のみ）
     contacts_index: dict[str, dict[str, object]] = {}
+    contacts_name_index: dict[str, dict[str, object]] = {}
     for contact in contacts:
         if isinstance(contact, dict):
             key = make_key(contact)
             contacts_index[key] = contact
+            nk = name_only_key(contact)
+            if nk:
+                contacts_name_index[nk] = contact
 
     merged: list[dict[str, object]] = []
     matched_count = 0
+    fallback_matched_count = 0
     unmatched_names: list[str] = []
 
     for candidate in candidates:
@@ -75,12 +87,22 @@ def main() -> None:
         key = make_key(candidate)
         result: dict[str, object] = dict(candidate)
 
-        if key in contacts_index:
-            contact = contacts_index[key]
+        contact: dict[str, object] | None = contacts_index.get(key)
+        fallback = False
+        if contact is None:
+            # フォールバック: company_name のみでマッチ（website_url 欠損対策）
+            nk = name_only_key(candidate)
+            contact = contacts_name_index.get(nk) if nk else None
+            if contact is not None:
+                fallback = True
+
+        if contact is not None:
             for field in CONTACT_FIELDS:
                 if field in contact:
                     result[field] = contact[field]
             matched_count += 1
+            if fallback:
+                fallback_matched_count += 1
         else:
             for field in CONTACT_FIELDS:
                 result.setdefault(field, None)
@@ -90,11 +112,14 @@ def main() -> None:
 
     print_json(merged)
 
-    print(
+    summary = (
         f"マージ結果: 候補 {len(candidates)}件, 連絡先 {len(contacts)}件"
-        f" → マッチ {matched_count}件, 未マッチ {len(unmatched_names)}件",
-        file=sys.stderr,
+        f" → マッチ {matched_count}件"
     )
+    if fallback_matched_count:
+        summary += f"（うち社名フォールバック {fallback_matched_count}件）"
+    summary += f", 未マッチ {len(unmatched_names)}件"
+    print(summary, file=sys.stderr)
     if unmatched_names:
         for name in unmatched_names:
             print(f"  連絡先未マッチ: {name}", file=sys.stderr)

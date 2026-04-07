@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS prospects (
     website_url TEXT NOT NULL,
     email TEXT,
     contact_form_url TEXT,
+    form_type TEXT,  -- google_forms, native_html, wordpress_cf7, iframe_embed, with_captcha
     sns_accounts TEXT,  -- JSON: {"twitter": "...", "linkedin": "...", ...}
     do_not_contact INTEGER NOT NULL DEFAULT 0,  -- 1 = 送付NG（全プロジェクト共通）
     notes TEXT,

@@ -11,7 +11,7 @@ prospects（営業先マスタ）と project_prospects（プロジェクト紐�
 JSON配列の各オブジェクト:
   prospects用:
     company_name (必須), overview (必須), website_url (必須),
-    corporate_number, industry, email, contact_form_url, sns_accounts
+    corporate_number, industry, email, contact_form_url, form_type, sns_accounts
   project_prospects用:
     match_reason (必須), priority (省略時: 3)
   特殊:
@@ -59,6 +59,7 @@ class ProspectEntry(TypedDict, total=False):
     website_url: str
     email: str
     contact_form_url: str
+    form_type: str
     sns_accounts: str | dict[str, str]
     do_not_contact: bool
     notes: str
@@ -183,9 +184,9 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     sql = (
         "INSERT INTO prospects"
         + " (company_name, corporate_number, overview, industry,"
-        + " website_url, email, contact_form_url, sns_accounts,"
+        + " website_url, email, contact_form_url, form_type, sns_accounts,"
         + " do_not_contact, notes)"
-        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     cursor = conn.execute(
         sql,
@@ -197,6 +198,7 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
             entry.get("website_url"),
             entry.get("email"),
             entry.get("contact_form_url"),
+            entry.get("form_type"),
             sns_str,
             do_not_contact,
             notes,

@@ -103,7 +103,7 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
         args.append("30")
     cursor = conn.execute(
         "SELECT p.id, p.company_name, p.overview, p.email,"
-        " p.contact_form_url, p.sns_accounts, pp.match_reason, pp.priority"
+        " p.contact_form_url, p.form_type, p.sns_accounts, pp.match_reason, pp.priority"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ? AND pp.status = 'new'"

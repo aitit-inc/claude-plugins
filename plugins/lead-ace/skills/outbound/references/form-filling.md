@@ -61,6 +61,47 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 - 当該フォームURL に対して、**同一セッション内では再試行しない**
 - 他チャネル（メール・SNS）が利用可能ならそちらを試す
 
+### Google Forms の場合
+
+Google Forms はブラウザ UI 操作ではなく、`formResponse` エンドポイントへの直接 POST で送信する。成功率が高く（UI 操作不要・CAPTCHA なし）、コンテキスト消費も最小限。
+
+**検出方法:**
+- URL に `docs.google.com/forms` を含む
+- ページソースに `FB_PUBLIC_LOAD_DATA_` が存在する
+
+**送信手順:**
+
+1. **フォームページの HTML を取得する**
+
+   ```bash
+   # WebFetch でページソースを取得
+   ```
+
+2. **フォーム ID と entry ID を抽出する**
+
+   - フォーム ID: URL の `/forms/d/{FORM_ID}/` 部分から取得
+   - entry ID: ページソース内の `FB_PUBLIC_LOAD_DATA_` に含まれるフィールド定義から抽出する。各フィールドは `entry.XXXXXXX` 形式の ID を持つ
+   - `mcp__claude_in_chrome__javascript_tool` でページ内の `FB_PUBLIC_LOAD_DATA_` を読み取るか、WebFetch のレスポンスから正規表現で抽出する
+
+3. **formResponse エンドポイントに POST する**
+
+   ```bash
+   curl -s -o /dev/null -w "%{http_code}" \
+     -X POST "https://docs.google.com/forms/d/{FORM_ID}/formResponse" \
+     -d "entry.XXXXXXX=値1&entry.YYYYYYY=値2&entry.ZZZZZZZ=値3"
+   ```
+
+   - HTTP 200 が返れば送信成功
+   - リダイレクト（302 → 確認ページ）も成功
+
+4. **ログ記録**
+
+   送信成功後、`send_and_log.py --log-only` で記録する。`--channel form` を指定。
+
+**注意:**
+- Google Forms はフィールドの並び順と entry ID の対応が自明でないことがある。ページソースのフィールド定義（ラベルテキスト）と照合して正しい entry ID にマッピングすること
+- `emailAddress` パラメータが必要なフォーム（メール収集が有効化されている場合）もある
+
 ### WordPress Contact Form 7 (wpcf7) の既知問題
 
 wpcf7 で構築されたフォーム（URL に `wpcf7` を含む、または HTML に `class="wpcf7-form"` がある）では、以下の2パターンの問題が発生することがある。**まず UI 経由送信を試し、失敗したら REST API にフォールバック**する順序で対処する。

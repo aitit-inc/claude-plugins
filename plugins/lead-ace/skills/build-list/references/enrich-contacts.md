@@ -60,6 +60,18 @@
 
 フォームURLを登録する場合は、実際にページにアクセスしてフォームの種別・必須項目を確認した上で判断する。
 
+**フォーム種別の判定（form_type）:** フォームURLを登録する際、ページソースから以下の基準で `form_type` を判定し記録する。outbound フェーズでチャネル戦略・処理方法の判断に使用される。
+
+| form_type | 判定基準 | outbound での扱い |
+|---|---|---|
+| `google_forms` | URL に `docs.google.com/forms` を含む | formResponse POST で送信（成功率高） |
+| `native_html` | 通常の `<form>` タグ。iframe 埋め込みでない | ブラウザ操作で送信 |
+| `wordpress_cf7` | HTML に `class="wpcf7-form"` または URL に `wpcf7` を含む | ブラウザ操作。失敗時は REST API フォールバック |
+| `iframe_embed` | フォームが `<iframe>` 内に埋め込まれている（HubSpot, Marketo 等） | 送信困難。スキップ推奨 |
+| `with_captcha` | reCAPTCHA / hCaptcha / Turnstile のスクリプトタグが存在 | 送信不可。スキップ |
+
+判定はページの WebFetch 結果から行う（フォームページを開いた時点で確認できる情報のみ）。複数の条件に該当する場合は、より制約の強い方を採用する（例: native_html + with_captcha → `with_captcha`）。
+
 ### 4. SNSアカウントの確認（余裕があれば）
 
 公式サイト上にSNSリンク（Twitter/X, LinkedIn等）があれば取得する。ただしメール・フォームの探索を優先し、SNSは見つかれば拾う程度でよい。
@@ -77,6 +89,7 @@
     "industry": "業種",
     "email": "info@a.com",
     "contact_form_url": null,
+    "form_type": null,
     "sns_accounts": {"x": "@a_official"},
     "match_reason": "...",
     "priority": 3
@@ -88,6 +101,7 @@
 - フォームURLは `contact_form_url`（`form_url` ではない）
 - SNSは `sns_accounts`（JSON object、例: `{"x": "@handle", "linkedin": "URL"}`。`sns_url` や `sns_type` ではない）
 - `priority` は 1-5 の数値（文字列 "high"/"low" 等ではない）
+- `form_type`: フォームの種別（`"google_forms"` / `"native_html"` / `"wordpress_cf7"` / `"iframe_embed"` / `"with_captcha"` / `null`）。`contact_form_url` が null の場合は null
 - `do_not_contact`: サイトに営業お断りの記載があった場合に `true` を設定（省略時は `false`）
 - `notes`: do_not_contact の理由など補足情報（省略可）
 

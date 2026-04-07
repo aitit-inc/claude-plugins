@@ -112,7 +112,16 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 
 ### 4. 問い合わせフォーム入力
 
-claude-in-chromeを使用してフォームに入力する。`references/form-filling.md` の手順に従う。
+`form_type` フィールドに応じて処理方法を分岐する:
+
+| form_type | 処理 |
+|---|---|
+| `google_forms` | `references/form-filling.md` の「Google Forms の場合」に従い、`formResponse` POST で送信 |
+| `native_html` / `wordpress_cf7` / null | claude-in-chrome でブラウザ操作。`references/form-filling.md` の手順に従う |
+| `iframe_embed` | スキップ。`status = 'failed'`, `error_message = 'iframe埋め込みフォームのためスキップ'` でログ記録 |
+| `with_captcha` | スキップ。`references/form-filling.md` の「reCAPTCHA / hCaptcha 等がある場合」に従う |
+
+`form_type` が null（未判定）の場合はブラウザ操作を試み、フォーム構造を確認してから判断する。
 
 **送信本文の検証:** outreach_logs に記録する前に、フォームに入力した本文（body）が空でないことを確認する。空の場合は送信失敗として `status = 'failed'`, `error_message = 'body empty'` で記録し、ステータスは `new` のまま維持する。
 
