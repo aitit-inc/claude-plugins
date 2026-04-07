@@ -35,6 +35,18 @@ plugins/<plugin-name>/
 - Python スクリプトの CLI インターフェースは `argparse` で統一する（`sys.argv` 直接参照は使わない）
 - Python スクリプトでは型定義をしっかりすること。anyは禁止。なるべく型キャストは避け、正しく型推論できるようにすること
 
+## スキルの書き方（公式ベストプラクティス準拠）
+
+- **SKILL.md は500行以下**。超えそうなら references/ に分離する
+- **description は250文字以内**（超過分はスキル一覧で切り詰められる）。キーユースケースを先頭に書く
+- **references/ は自動読み込みされない**。SKILL.md 内で「いつ・どの条件で読むか」を明示すること
+- **references/ のネストは1階層まで**。reference ファイルからさらに別ファイルを参照しない
+- **300行超の reference ファイルには目次を付ける**
+- **Claude が既に知っている知識は書かない**。トークンの無駄
+- **プログレッシブ・ディスクロージャー**: SKILL.md に全手順を書き、条件付きでしか使わない詳細は references/ に置く。常に必要な情報だけ SKILL.md に残す
+
+出典: [Extend Claude with skills](https://code.claude.com/docs/en/skills), [Skill authoring best practices](https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices)
+
 ## サブエージェントプロンプトの注意事項
 
 サブエージェントに不可逆アクション（メール送信、フォーム送信等）を実行させる場合、プロンプトの書き方でモデルが拒否するかどうかが決まる（`--dangerously-skip-permissions` では解決しない）。
