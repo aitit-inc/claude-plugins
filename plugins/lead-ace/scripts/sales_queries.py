@@ -17,6 +17,7 @@ Commands:
   last-evaluation <project_id>         最新のevaluation日時
   existing-list <project_id>           登録済み営業先の直近50件
   all-prospect-identifiers <project_id>  全登録済み営業先の名前・URL一覧（重複回避用）
+  count-reachable-by-channel <project_id>  チャネル別の未送信営業先数
 """
 
 from __future__ import annotations
@@ -54,6 +55,32 @@ def cmd_count_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
         error_exit("Usage: count-reachable <project_id>")
     cursor = conn.execute(
         "SELECT COUNT(*) as count"
+        " FROM project_prospects pp"
+        " JOIN prospects p ON pp.prospect_id = p.id"
+        " WHERE pp.project_id = ? AND pp.status = 'new'"
+        " AND p.do_not_contact = 0"
+        " AND ("
+        "   (p.email IS NOT NULL AND p.email != '')"
+        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '')"
+        "   OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')"
+        " )",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_count_reachable_by_channel(conn: sqlite3.Connection, args: list[str]) -> None:
+    """チャネル別の未送信営業先数"""
+    if len(args) < 1:
+        error_exit("Usage: count-reachable-by-channel <project_id>")
+    cursor = conn.execute(
+        "SELECT"
+        "   SUM(CASE WHEN p.email IS NOT NULL AND p.email != '' THEN 1 ELSE 0 END) as email,"
+        "   SUM(CASE WHEN (p.email IS NULL OR p.email = '')"
+        "     AND p.contact_form_url IS NOT NULL AND p.contact_form_url != '' THEN 1 ELSE 0 END) as form_only,"
+        "   SUM(CASE WHEN (p.email IS NULL OR p.email = '')"
+        "     AND (p.contact_form_url IS NULL OR p.contact_form_url = '')"
+        "     AND p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}' THEN 1 ELSE 0 END) as sns_only"
         " FROM project_prospects pp"
         " JOIN prospects p ON pp.prospect_id = p.id"
         " WHERE pp.project_id = ? AND pp.status = 'new'"
@@ -181,6 +208,7 @@ COMMANDS: dict[str, tuple[str, Callable[[sqlite3.Connection, list[str]], None]]]
     "list-projects": ("全プロジェクト一覧", cmd_list_projects),
     "project-exists": ("プロジェクトの存在確認", cmd_project_exists),
     "count-reachable": ("アプローチ可能な未送信営業先数（email/form/SNSいずれかあり）", cmd_count_reachable),
+    "count-reachable-by-channel": ("チャネル別の未送信営業先数", cmd_count_reachable_by_channel),
     "list-reachable": ("未送信営業先リスト（email→form→SNS優先順）", cmd_list_reachable),
     "recent-outreach": ("直近アプローチ済み営業先", cmd_recent_outreach),
     "data-sufficiency": ("evaluate用データ充足度", cmd_data_sufficiency),

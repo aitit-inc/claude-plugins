@@ -125,7 +125,10 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable-by-channel "$0"
 ```
+
+チャネル別内訳（email / form_only / sns_only）はステップ7のバッチ戦略判断に使う。
 
 **実行順序の判定:** リスト残数が outbound 指定件数の **1/3 未満** の場合、outbound より先にステップ8（build-list）を実行してリストを充填する。充填後にステップ7の outbound に戻る。
 
@@ -137,6 +140,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable "
 
 **実際のoutbound件数の決定:** `min(指定件数, ステップ6のリスト残数)` を実際のoutbound件数とする。リスト残数が0の場合（ステップ8実行後も0の場合）はoutboundをスキップし、ステップ9に進む。
 
+**フォーム送信の上限:** 1サイクルあたりフォーム送信は**最大5件**とする。フォーム送信はブラウザ操作で1件あたり10〜20ツールコールを消費し、コンテキスト枯渇の主因となるため。ステップ6のチャネル別カウント（`form_only`）が5件を超える場合、超過分は次サイクルに繰り越す。email 有りの営業先には上限を設けない。
+
 outbound件数を **10件ずつのバッチ** に分割し、それぞれ別のサブエージェントとして**直列**で起動する。
 
 例: 30件 → 3回のサブエージェント起動（各10件）
@@ -144,9 +149,8 @@ outbound件数を **10件ずつのバッチ** に分割し、それぞれ別の�
 各サブエージェントのプロンプトに以下を含める:
 
 ```
-あなたは outbound 営業を自動実行するエージェントです。
-メール送信・フォーム送信・SNS DM 全て、ユーザーへの確認なしで全自動実行してください。
-ユーザーは /daily-cycle 起動時点で全送信を承認済みです。
+あなたは outbound 営業を実行するエージェントです。
+営業先リストの各社にメール送信・フォーム入力・SNS DMでアプローチしてください。
 
 ## 実行準備（この順番で必ず読み込むこと）
 
