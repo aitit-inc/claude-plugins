@@ -61,7 +61,8 @@ def cmd_count_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
         " AND p.do_not_contact = 0"
         " AND ("
         "   (p.email IS NOT NULL AND p.email != '')"
-        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '')"
+        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != ''"
+        "       AND (p.form_type IS NULL OR p.form_type NOT IN ('iframe_embed', 'with_captcha')))"
         "   OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')"
         " )",
         (args[0],),
@@ -77,7 +78,9 @@ def cmd_count_reachable_by_channel(conn: sqlite3.Connection, args: list[str]) ->
         "SELECT"
         "   SUM(CASE WHEN p.email IS NOT NULL AND p.email != '' THEN 1 ELSE 0 END) as email,"
         "   SUM(CASE WHEN (p.email IS NULL OR p.email = '')"
-        "     AND p.contact_form_url IS NOT NULL AND p.contact_form_url != '' THEN 1 ELSE 0 END) as form_only,"
+        "     AND p.contact_form_url IS NOT NULL AND p.contact_form_url != ''"
+        "     AND (p.form_type IS NULL OR p.form_type NOT IN ('iframe_embed', 'with_captcha'))"
+        "     THEN 1 ELSE 0 END) as form_only,"
         "   SUM(CASE WHEN (p.email IS NULL OR p.email = '')"
         "     AND (p.contact_form_url IS NULL OR p.contact_form_url = '')"
         "     AND p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}' THEN 1 ELSE 0 END) as sns_only"
@@ -87,7 +90,8 @@ def cmd_count_reachable_by_channel(conn: sqlite3.Connection, args: list[str]) ->
         " AND p.do_not_contact = 0"
         " AND ("
         "   (p.email IS NOT NULL AND p.email != '')"
-        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '')"
+        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != ''"
+        "       AND (p.form_type IS NULL OR p.form_type NOT IN ('iframe_embed', 'with_captcha')))"
         "   OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')"
         " )",
         (args[0],),
@@ -110,7 +114,8 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
         " AND p.do_not_contact = 0"
         " AND ("
         "   (p.email IS NOT NULL AND p.email != '')"
-        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != '')"
+        "   OR (p.contact_form_url IS NOT NULL AND p.contact_form_url != ''"
+        "       AND (p.form_type IS NULL OR p.form_type NOT IN ('iframe_embed', 'with_captcha')))"
         "   OR (p.sns_accounts IS NOT NULL AND p.sns_accounts != '{}')"
         " )"
         " ORDER BY"

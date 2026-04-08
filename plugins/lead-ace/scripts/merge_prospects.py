@@ -21,12 +21,12 @@ from __future__ import annotations
 import json
 import sys
 
-from sales_db import PROSPECT_CONTACT_FIELDS, error_exit, extract_domain, print_json  # pyright: ignore[reportMissingModuleSource]
+from sales_db import PROSPECT_CONTACT_FIELDS, error_exit, extract_domain, normalize_name, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 def make_key(entry: dict[str, object]) -> str:
-    """company_name + domain でマッチキーを生成する。"""
-    name = str(entry.get("company_name", "")).strip()
+    """company_name（正規化済み）+ domain でマッチキーを生成する。"""
+    name = normalize_name(str(entry.get("company_name", "")))
     raw_url = entry.get("website_url")
     url = str(raw_url) if isinstance(raw_url, str) else ""
     domain = extract_domain(url) if url else ""
@@ -34,8 +34,8 @@ def make_key(entry: dict[str, object]) -> str:
 
 
 def name_only_key(entry: dict[str, object]) -> str:
-    """company_name のみのフォールバックキーを生成する。"""
-    return str(entry.get("company_name", "")).strip()
+    """company_name（正規化済み）のみのフォールバックキーを生成する。"""
+    return normalize_name(str(entry.get("company_name", "")))
 
 
 # 連絡先フィールド（sales_db.py の Prospect TypedDict から導出）

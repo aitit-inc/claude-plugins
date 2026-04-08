@@ -16,7 +16,8 @@ Usage (ログ記録のみモード - フォーム/SNS用):
 ログ記録モード: 送信処理は行わず、ログ記録+ステータス更新のみを1トランザクションで実行する。
 
 Output: JSON
-  {"status": "sent"|"failed", "outreach_log_id": N, "error_message": null|"..."}
+  {"status": "sent"|"failed"|"skipped", "outreach_log_id": N, "error_message": null|"..."}
+  skipped: 同一営業先に既に送信成功済みのため送信をスキップした場合
 
 Exit code: 0 = 成功, 1 = 失敗（ログは記録済み）, 2 = スクリプトエラー
 """
@@ -27,17 +28,21 @@ import argparse
 import sqlite3
 import subprocess
 import sys
-from typing import TypedDict
+from typing import Literal, TypedDict
 
-from sales_db import OutreachStatus, error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
+from sales_db import error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 # ---------------------------------------------------------------------------
 # 型定義
 # ---------------------------------------------------------------------------
 
+# スクリプト出力用ステータス（DB値 + skipped）
+SendStatus = Literal["sent", "failed", "skipped"]
+
+
 class SendResult(TypedDict):
-    status: OutreachStatus
+    status: SendStatus
     outreach_log_id: int
     error_message: str | None
 
@@ -122,6 +127,21 @@ def send_email(
     return False, error
 
 
+def check_already_sent(
+    conn: sqlite3.Connection,
+    project_id: str,
+    prospect_id: int,
+) -> int | None:
+    """同一 project + prospect で sent 済みの outreach_log ID を返す。なければ None。"""
+    row = conn.execute(
+        "SELECT id FROM outreach_logs"
+        " WHERE project_id = ? AND prospect_id = ? AND status = 'sent'"
+        " LIMIT 1",
+        (project_id, prospect_id),
+    ).fetchone()
+    return int(row[0]) if row is not None else None
+
+
 def record_result(
     conn: sqlite3.Connection,
     project_id: str,
@@ -179,6 +199,19 @@ def main() -> None:
     # 本文取得（DB記録用）
     body_text = read_body(body, body_file)
 
+    # 重複チェック: 既に送信成功済みの営業先にはアプローチしない（送信前に確認）
+    conn = get_connection(db_path)
+    existing_log_id = check_already_sent(conn, project_id, prospect_id)
+    if existing_log_id is not None:
+        conn.close()
+        skipped: SendResult = {
+            "status": "skipped",
+            "outreach_log_id": existing_log_id,
+            "error_message": "already_sent",
+        }
+        print_json(skipped)
+        return
+
     if log_only:
         # ログ記録のみモード（フォーム/SNS用）
         channel: str = args.channel
@@ -205,8 +238,7 @@ def main() -> None:
             cc=args.cc,
         )
 
-    # DB記録
-    conn = get_connection(db_path)
+    # DB記録（conn は重複チェック時に取得済み）
     try:
         log_id = record_result(
             conn, project_id, prospect_id, channel, subject, body_text, success, error_message,
