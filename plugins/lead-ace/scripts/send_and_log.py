@@ -29,7 +29,7 @@ import subprocess
 import sys
 from typing import TypedDict
 
-from sales_db import error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
+from sales_db import OutreachStatus, error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ from sales_db import error_exit, get_connection, print_json  # pyright: ignore[r
 # ---------------------------------------------------------------------------
 
 class SendResult(TypedDict):
-    status: str  # "sent" | "failed"
+    status: OutreachStatus
     outreach_log_id: int
     error_message: str | None
 

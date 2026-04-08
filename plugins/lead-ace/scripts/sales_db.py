@@ -9,7 +9,23 @@ import re
 import sqlite3
 import sys
 import unicodedata
-from typing import NoReturn, TypedDict
+from typing import Literal, NoReturn, TypedDict
+
+
+# ---------------------------------------------------------------------------
+# 型エイリアス（文字列リテラル）
+# ---------------------------------------------------------------------------
+
+FormType = Literal[
+    "google_forms", "native_html", "wordpress_cf7", "iframe_embed", "with_captcha",
+]
+ProspectStatus = Literal[
+    "new", "contacted", "responded", "converted", "rejected", "inactive", "unreachable",
+]
+OutreachStatus = Literal["sent", "failed"]
+OutreachChannel = Literal["email", "form", "sns_twitter", "sns_linkedin"]
+Sentiment = Literal["positive", "neutral", "negative"]
+MatchType = Literal["EXACT_MATCH", "POSSIBLE_MATCH"]
 
 
 # ---------------------------------------------------------------------------
@@ -31,7 +47,7 @@ class Prospect(TypedDict, total=False):
     website_url: str
     email: str | None
     contact_form_url: str | None
-    form_type: str | None  # google_forms, native_html, wordpress_cf7, iframe_embed, with_captcha
+    form_type: FormType | None
     sns_accounts: str | None  # JSON string
     do_not_contact: int
     notes: str | None
@@ -45,7 +61,7 @@ class ProjectProspect(TypedDict, total=False):
     prospect_id: int
     match_reason: str
     priority: int
-    status: str
+    status: ProspectStatus
     created_at: str
     updated_at: str
 
@@ -54,10 +70,10 @@ class OutreachLog(TypedDict, total=False):
     id: int
     project_id: str
     prospect_id: int
-    channel: str
+    channel: OutreachChannel
     subject: str | None
     body: str
-    status: str
+    status: OutreachStatus
     sent_at: str
     error_message: str | None
 
@@ -65,9 +81,9 @@ class OutreachLog(TypedDict, total=False):
 class Response(TypedDict, total=False):
     id: int
     outreach_log_id: int
-    channel: str
+    channel: OutreachChannel
     content: str
-    sentiment: str
+    sentiment: Sentiment
     response_type: str
     received_at: str
 
@@ -82,7 +98,7 @@ class Evaluation(TypedDict, total=False):
 
 
 class DuplicateMatch(TypedDict):
-    match_type: str  # EXACT_MATCH | POSSIBLE_MATCH
+    match_type: MatchType
     prospect_id: int
     company_name: str
     reason: str
