@@ -41,6 +41,7 @@ plugins/<plugin-name>/
 - 言語: 日本語（コード内コメント・ドキュメント共に）
 - Python スクリプトの CLI インターフェースは `argparse` で統一する（`sys.argv` 直接参照は使わない）
 - Python スクリプトでは型定義をしっかりすること。anyは禁止。なるべく型キャストは避け、正しく型推論できるようにすること
+- Python スクリプトを変更したら、コミット前に `cd plugins/lead-ace/scripts && npx pyright` を実行して型チェックを通すこと
 
 ## スキルの書き方（公式ベストプラクティス準拠）
 

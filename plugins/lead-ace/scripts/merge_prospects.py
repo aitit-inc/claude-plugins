@@ -21,7 +21,7 @@ from __future__ import annotations
 import json
 import sys
 
-from sales_db import error_exit, extract_domain, print_json  # pyright: ignore[reportMissingModuleSource]
+from sales_db import PROSPECT_CONTACT_FIELDS, error_exit, extract_domain, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 def make_key(entry: dict[str, object]) -> str:
@@ -38,8 +38,8 @@ def name_only_key(entry: dict[str, object]) -> str:
     return str(entry.get("company_name", "")).strip()
 
 
-# 連絡先フィールド（Phase 2 で取得されるもの）
-CONTACT_FIELDS = ("email", "contact_form_url", "form_type", "sns_accounts", "do_not_contact", "notes")
+# 連絡先フィールド（sales_db.py の Prospect TypedDict から導出）
+CONTACT_FIELDS = PROSPECT_CONTACT_FIELDS
 
 
 def main() -> None:

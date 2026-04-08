@@ -140,7 +140,7 @@ def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[Dupl
                     sns = {str(k): str(v) for k, v in parsed.items()}
             except json.JSONDecodeError:
                 pass
-        elif isinstance(sns_raw, dict):
+        else:
             sns = sns_raw
         for key, value in sns.items():
             if value:

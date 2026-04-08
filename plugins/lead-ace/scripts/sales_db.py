@@ -31,6 +31,7 @@ class Prospect(TypedDict, total=False):
     website_url: str
     email: str | None
     contact_form_url: str | None
+    form_type: str | None  # google_forms, native_html, wordpress_cf7, iframe_embed, with_captcha
     sns_accounts: str | None  # JSON string
     do_not_contact: int
     notes: str | None
@@ -85,6 +86,38 @@ class DuplicateMatch(TypedDict):
     prospect_id: int
     company_name: str
     reason: str
+
+
+# ---------------------------------------------------------------------------
+# Prospect フィールドグループ
+# TypedDict と同期必須。下部の assertion でインポート時に完全性を自動検証する。
+# ---------------------------------------------------------------------------
+
+# DB自動生成フィールド（id, timestamps）
+_PROSPECT_AUTO_FIELDS = frozenset({"id", "created_at", "updated_at"})
+
+# Phase 1（候補収集）で取得するフィールド
+PROSPECT_CANDIDATE_FIELDS: tuple[str, ...] = (
+    "company_name", "corporate_number", "overview", "industry", "website_url",
+)
+
+# Phase 2（連絡先取得）で取得するフィールド
+PROSPECT_CONTACT_FIELDS: tuple[str, ...] = (
+    "email", "contact_form_url", "form_type", "sns_accounts", "do_not_contact", "notes",
+)
+
+# 完全性チェック: 全 Prospect フィールドがいずれかのグループに属すること
+_all_prospect_fields = frozenset(Prospect.__annotations__)
+_grouped_prospect_fields = (
+    frozenset(PROSPECT_CANDIDATE_FIELDS)
+    | frozenset(PROSPECT_CONTACT_FIELDS)
+    | _PROSPECT_AUTO_FIELDS
+)
+assert _all_prospect_fields == _grouped_prospect_fields, (
+    f"Prospect フィールドグループの不整合 — "
+    f"グループ未登録: {_all_prospect_fields - _grouped_prospect_fields}, "
+    f"TypedDict未定義: {_grouped_prospect_fields - _all_prospect_fields}"
+)
 
 
 # ---------------------------------------------------------------------------
