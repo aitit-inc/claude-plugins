@@ -72,6 +72,8 @@ SALES_STRATEGY.mdの「営業チャネル」セクションに記載されたチ
 
 1つの営業先につき、利用可能なチャネル全てでアプローチする必要はない。最も効果的な1チャネルで十分。
 
+**1社あたりの試行上限:** 1社に対する送信試行は**最大2回**（メインチャネル + フォールバック1回）とする。2回失敗したら理由を問わず即スキップし、次の営業先に進む。1社に長時間かけてコンテキストとツールコールを浪費してはならない。
+
 **SNS DMの注意:** SNS DM は到達率が低い（相手のDM開放設定に依存）。SALES_STRATEGY.mdの「営業チャネル」セクションで優先順位が指定されている場合はそれに従う。SNSが無効化されている場合はスキップする。
 
 **ブラウザツール（claude-in-chrome）が利用できない場合:** フォーム入力・SNS DMは実行不可。メールアドレスがある営業先のみを対象とし、フォーム/SNSのみの営業先はスキップする。スキップした件数は結果レポートで「ブラウザ未接続によりスキップ: N件」として報告する。
@@ -125,7 +127,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 | `iframe_embed` | スキップ。`status = 'failed'`, `error_message = 'iframe埋め込みフォームのためスキップ'` でログ記録 |
 | `with_captcha` | スキップ。`references/form-filling.md` の「reCAPTCHA / hCaptcha 等がある場合」に従う |
 
-`form_type` が null（未判定）の場合はブラウザ操作を試み、フォーム構造を確認してから判断する。
+`form_type` が null（未判定）の場合はブラウザ操作を試み、フォーム構造を確認してから判断する。**ただし、null の場合は1回の試行で失敗したら即スキップする**（iframe_embed や with_captcha だった場合のツールコール浪費を防ぐため）。
 
 **送信本文の検証:** outreach_logs に記録する前に、フォームに入力した本文（body）が空でないことを確認する。空の場合は送信失敗として `status = 'failed'`, `error_message = 'body empty'` で記録し、ステータスは `new` のまま維持する。
 
@@ -211,6 +213,6 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospe
 
 以下を報告する:
 - アプローチした営業先数
-- チャネル別の内訳（メール: N件、フォーム: N件、SNS: N件）
+- チャネル別の試行数・成功数・成功率（メール: 成功X/試行Y件(XX%)、フォーム: 成功X/試行Y件(XX%)、SNS: 成功X/試行Y件(XX%)）
 - 失敗した件数と理由
 - 次のステップとして `/check-results` の実行を案内する

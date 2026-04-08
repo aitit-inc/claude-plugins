@@ -327,7 +327,7 @@ build-list のサマリー（追加件数、reachable件数、未マッチ件数
 ## outbound
 - アプローチ数: X件（成功: Y / 失敗: Z）
 - 成功率: XX%
-- チャネル内訳: メール X件 / フォーム Y件 / SNS Z件
+- チャネル別成功率: メール X/Y件(XX%) / フォーム X/Y件(XX%) / SNS X/Y件(XX%)
 - unreachable: X件
 
 ## build-list

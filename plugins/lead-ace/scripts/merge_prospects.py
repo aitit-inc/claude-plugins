@@ -39,7 +39,7 @@ def name_only_key(entry: dict[str, object]) -> str:
 
 
 # 連絡先フィールド（Phase 2 で取得されるもの）
-CONTACT_FIELDS = ("email", "contact_form_url", "form_type", "sns_accounts")
+CONTACT_FIELDS = ("email", "contact_form_url", "form_type", "sns_accounts", "do_not_contact", "notes")
 
 
 def main() -> None:
