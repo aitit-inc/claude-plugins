@@ -27,13 +27,13 @@ allowed-tools:
 
 ## 実行手順
 
-### 0. プロジェクト登録チェック
+### 0. Preflight チェック
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
 ```
 
-結果が `NOT_REGISTERED` の場合、「このプロジェクトはセットアップされていません。先に `/setup $0` を実行してください。」と表示して**即座に中断**する。
+`status` が `error` の場合はエラーメッセージを表示して**即座に中断**する。`migrations_applied` にマイグレーションがあればユーザーに報告する。
 
 ### 1. 準備
 
@@ -130,8 +130,11 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db count-reachable-b
 
 チャネル別内訳（email / form_only / sns_only）はステップ7のバッチ戦略判断に使う。
 
+**email枯渇チェック:** チャネル別内訳で **email = 0 かつ form_only < 5** の場合、outboundの実効成功率が極めて低い。この場合はoutboundをスキップし、**ステップ8（build-list）を先に実行**してemail保有先を充填する。充填後にステップ6を再実行し、email > 0 になっていればoutboundに進む。build-list後もemail = 0 のままの場合、form_only の件数分だけoutboundを実行する（email枯渇状態であることをユーザーに報告する）。
+
 **実行順序の判定:** リスト残数が outbound 指定件数の **1/3 未満** の場合、outbound より先にステップ8（build-list）を実行してリストを充填する。充填後にステップ7の outbound に戻る。
 
+- email = 0 かつ form_only < 5 → ステップ8（build-list）→ ステップ6を再実行 → ステップ7（outbound）
 - リスト残数 ≥ 指定件数の 1/3 → ステップ7（outbound）→ ステップ8（build-list、必要時）
 - リスト残数 < 指定件数の 1/3 → ステップ8（build-list）→ ステップ6を再実行 → ステップ7（outbound）
 - リスト残数 = 0 かつ build-list 未実行 → ステップ8（build-list）→ ステップ6を再実行 → ステップ7（outbound）

@@ -21,6 +21,7 @@ MODULES = [
     "init_db",
     "license",
     "merge_prospects",
+    "preflight",
     "query_db",
     "sales_queries",
     "send_and_log",

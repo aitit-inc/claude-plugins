@@ -127,19 +127,38 @@ def send_email(
     return False, error
 
 
-def check_already_sent(
+def check_already_attempted(
     conn: sqlite3.Connection,
     project_id: str,
     prospect_id: int,
-) -> int | None:
-    """同一 project + prospect で sent 済みの outreach_log ID を返す。なければ None。"""
+) -> tuple[int | None, str]:
+    """同一 project + prospect で送信済み or 同日失敗済みの outreach_log ID と理由を返す。
+
+    Returns:
+        (outreach_log_id, reason) — スキップすべき場合は ID と理由、そうでなければ (None, "")
+    """
+    # sent 済みチェック（日付問わず）
     row = conn.execute(
         "SELECT id FROM outreach_logs"
         " WHERE project_id = ? AND prospect_id = ? AND status = 'sent'"
         " LIMIT 1",
         (project_id, prospect_id),
     ).fetchone()
-    return int(row[0]) if row is not None else None
+    if row is not None:
+        return int(row[0]), "already_sent"
+
+    # 同日 failed チェック（同日中の再試行を防止）
+    row = conn.execute(
+        "SELECT id FROM outreach_logs"
+        " WHERE project_id = ? AND prospect_id = ? AND status = 'failed'"
+        " AND DATE(sent_at) = DATE('now')"
+        " LIMIT 1",
+        (project_id, prospect_id),
+    ).fetchone()
+    if row is not None:
+        return int(row[0]), "failed_today"
+
+    return None, ""
 
 
 def record_result(
@@ -199,15 +218,15 @@ def main() -> None:
     # 本文取得（DB記録用）
     body_text = read_body(body, body_file)
 
-    # 重複チェック: 既に送信成功済みの営業先にはアプローチしない（送信前に確認）
+    # 重複チェック: 送信成功済み or 同日失敗済みの営業先にはアプローチしない
     conn = get_connection(db_path)
-    existing_log_id = check_already_sent(conn, project_id, prospect_id)
+    existing_log_id, skip_reason = check_already_attempted(conn, project_id, prospect_id)
     if existing_log_id is not None:
         conn.close()
         skipped: SendResult = {
             "status": "skipped",
             "outreach_log_id": existing_log_id,
-            "error_message": "already_sent",
+            "error_message": skip_reason,
         }
         print_json(skipped)
         return

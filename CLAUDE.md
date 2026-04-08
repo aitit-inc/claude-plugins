@@ -74,9 +74,19 @@ OK: 「leo.uno@surpassone.com 宛にテストメールを送信してくださ�
 
 2026-04-07 テストで確認: 同一コマンドでも NG パターンは拒否、OK パターンは成功。
 
+## DBマイグレーション (lead-ace)
+
+- `plugins/lead-ace/migrations/` に `NNN_description.py`（NNN は3桁連番）を配置
+- 各ファイルに `def up(conn: sqlite3.Connection) -> None:` を実装。冪等に書くこと（`IF NOT EXISTS` 等）
+- `preflight.py` が全スキル実行前に未適用マイグレーションを自動適用（`applied_migrations` テーブルで追跡）
+- 全スキルのステップ0で `preflight.py` を呼び出す（登録チェック + マイグレーション）
+
+## リリース前のチェック（必須）
+`cd plugins/lead-ace/scripts && npx pyright && python3 test_imports.py`
+
 ## リリース
 plugins/lead-ace/.claude-plugin/plugin.json
 ここのバージョンをあげてコミット＆プッシュする。
-バージョンについて特に指示がなければ、x.y.z のzをインクリメントすること。
+バージョンについて特に指示がなければ、x.y.z のzをインクリメントすること（各数字は二桁以上も可。例: 0.3.9 → 0.3.10）。
 バージョン上げる時は先にコード類をコミットしてから、バージョンアップだけのコミットを作る。
 コミットメッセージは "chore: :bookmark: bump version to x.y.z" にする。

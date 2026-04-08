@@ -23,13 +23,13 @@ BUSINESS.mdとSALES_STRATEGY.mdの情報に基づいて、Web探索で営業先�
 
 ## Phase 0: 前提チェック
 
-### 0. プロジェクト登録チェック
+### 0. Preflight チェック
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/license.py check-registered "$(pwd)/$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
 ```
 
-結果が `NOT_REGISTERED` の場合、「このプロジェクトはセットアップされていません。先に `/setup $0` を実行してください。」と表示して**即座に中断**する。
+`status` が `error` の場合はエラーメッセージを表示して**即座に中断**する。`migrations_applied` にマイグレーションがあればユーザーに報告する。
 
 ## Phase 1: 候補収集
 
