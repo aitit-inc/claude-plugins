@@ -103,13 +103,7 @@ Agent toolでサブエージェントを起動し、返信確認を実行する�
 
 ### 5. evaluate（サブエージェント、条件付き）
 
-前回の evaluate 実行日を確認する:
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db last-evaluation "$0"
-```
-
-前回 evaluate から **3営業日以上経過している場合のみ** サブエージェントを起動する。3営業日未満の場合は「前回evaluateから日が浅いためスキップ」と報告してステップ6に進む。evaluations レコードが存在しない場合（初回）は実行する。
+毎サイクル実行する。
 
 プロンプトに以下を含める:
 - プロジェクトディレクトリ: `$0`
