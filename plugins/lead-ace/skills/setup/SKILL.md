@@ -28,7 +28,7 @@ allowed-tools:
 以下のコマンドを実行して、必要なツールの利用可否を確認する:
 
 ```bash
-python3 --version 2>&1 && python3 -c "import sqlite3; print('sqlite3: ok')" 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; echo "---"; which gog 2>&1 && gog version 2>&1
+python3 --version 2>&1 && python3 -c "import sqlite3; print('sqlite3: ok')" 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; echo "---"; which gog 2>&1 && gog version 2>&1; echo "---"; playwright-cli --version 2>&1
 ```
 
 結果に応じてユーザーに状況を伝える:
@@ -42,10 +42,11 @@ daily-cycle の自動コミット・プッシュが動作しないため、data.
 **gog が使えない場合:**
 メールの自動送信ができない。Gmail MCP が利用可能であればドラフト作成までは可能だが、送信は手動になる旨を警告する。
 
-**Gmail MCP / Claude in Chrome について:**
-bash では確認できないため、以下の依存関係をユーザーに伝える:
+**Gmail MCP / playwright-cli / Claude in Chrome について:**
+以下の依存関係をユーザーに伝える:
 - **Gmail MCP** (`gmail_search_messages` 等): /check-results での返信確認と /check-results でのドラフト作成に必要。未設定の場合、返信確認が手動になる
-- **Claude in Chrome**: /outbound でのフォーム送信・SNS DM送信に必要。未設定の場合、メールアドレスがある営業先のみが対象になる
+- **playwright-cli**: /outbound でのフォーム送信に必要。`playwright-cli --version` で確認できる。未インストールの場合、メールアドレスがある営業先のみが対象になる
+- **Claude in Chrome**: /outbound でのSNS DM送信、/check-results でのSNS返信確認に必要。未設定の場合、SNSチャネルが使えない
 - **gog も Gmail MCP も両方使えない場合**: メール送信もドラフト作成もできないため、outbound 機能が実質使えない旨を明確に警告する
 
 ### 3. ライセンスチェック

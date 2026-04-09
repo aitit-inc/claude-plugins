@@ -36,7 +36,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
 以下のコマンドを実行して、利用可能なツールを確認する:
 
 ```bash
-python3 --version 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; echo "---"; which gog 2>&1 && gog version 2>&1
+python3 --version 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; echo "---"; which gog 2>&1 && gog version 2>&1; echo "---"; playwright-cli --version 2>&1
 ```
 
 結果をユーザーに伝え、SALES_STRATEGY.md の「環境・ツール状況」セクションに反映する（ステップ7で生成時）:
@@ -44,14 +44,16 @@ python3 --version 2>&1; echo "---"; git --version 2>&1 && git remote -v 2>&1; ec
 - **gog**: 利用可/不可 → 不可の場合、営業チャネルの選択肢に影響（メール自動送信不可、ドラフト作成のみ）
 - **git + リモート**: 利用可/不可 → 不可の場合、daily-cycle の自動バックアップが無効
 - **Gmail MCP**: bash では確認不可。ユーザーに「Claude Code で Gmail MCP を設定していますか？」と確認する
-- **Claude in Chrome**: bash では確認不可。ユーザーに「Claude in Chrome 拡張機能を使っていますか？」と確認する
+- **playwright-cli**: `playwright-cli --version` で確認。フォーム送信に必要
+- **Claude in Chrome**: bash では確認不可。ユーザーに「Claude in Chrome 拡張機能を使っていますか？」と確認する。SNS DM に必要
 
-**更新モード時:** SALES_STRATEGY.md の「環境・ツール状況」セクションが既にある場合、bash で確認できるツール（python3, git, gog）のみ再チェックし、Gmail MCP / Claude in Chrome はユーザーへの再確認を省略する（変更がある場合はユーザーから申告してもらう）。
+**更新モード時:** SALES_STRATEGY.md の「環境・ツール状況」セクションが既にある場合、bash で確認できるツール（python3, git, gog, playwright-cli）のみ再チェックし、Gmail MCP / Claude in Chrome はユーザーへの再確認を省略する（変更がある場合はユーザーから申告してもらう）。
 
 **結果がチャネル選定に与える影響:**
 - gog なし + Gmail MCP あり → メールはドラフト作成のみ（手動送信）
 - gog なし + Gmail MCP なし → メール送信・ドラフト作成いずれも不可。フォームまたはSNS DMのみ
-- Claude in Chrome なし → フォーム送信・SNS DM不可。メールのみ
+- playwright-cli なし → フォーム送信不可。メールとSNS DMのみ
+- Claude in Chrome なし → SNS DM不可。メールとフォームのみ
 - 全ツールなし → outbound 機能が実質使えないため、ステップ3-6でチャネル設定時に制約を明確に伝える
 
 ### 3. 既存ファイル確認 & モード判定

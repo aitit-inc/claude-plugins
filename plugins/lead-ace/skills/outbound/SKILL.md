@@ -7,15 +7,14 @@ allowed-tools:
   - Read
   - Write
   - WebFetch
+  # SNS DM 用（ログインセッションが必要なため claude-in-chrome を使用）
   - mcp__claude_in_chrome__tabs_context_mcp
   - mcp__claude_in_chrome__tabs_create_mcp
   - mcp__claude_in_chrome__navigate
   - mcp__claude_in_chrome__read_page
   - mcp__claude_in_chrome__get_page_text
-  - mcp__claude_in_chrome__find
   - mcp__claude_in_chrome__form_input
   - mcp__claude_in_chrome__computer
-  - mcp__claude_in_chrome__javascript_tool
 ---
 
 # Outbound - アウトバウンド営業実行
@@ -76,7 +75,7 @@ SALES_STRATEGY.mdの「営業チャネル」セクションに記載されたチ
 
 **SNS DMの注意:** SNS DM は到達率が低い（相手のDM開放設定に依存）。SALES_STRATEGY.mdの「営業チャネル」セクションで優先順位が指定されている場合はそれに従う。SNSが無効化されている場合はスキップする。
 
-**ブラウザツール（claude-in-chrome）が利用できない場合:** フォーム入力・SNS DMは実行不可。メールアドレスがある営業先のみを対象とし、フォーム/SNSのみの営業先はスキップする。スキップした件数は結果レポートで「ブラウザ未接続によりスキップ: N件」として報告する。
+**ブラウザツールが利用できない場合:** playwright-cli が未インストールの場合はフォーム入力不可、claude-in-chrome が未接続の場合は SNS DM 不可。メールアドレスがある営業先のみを対象とし、該当チャネル不可の営業先はスキップする。スキップした件数は結果レポートで「ブラウザ未接続によりスキップ: N件」として報告する。
 
 ### 3. メール送信
 
@@ -118,39 +117,26 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 
 ### 4. 問い合わせフォーム入力
 
+`references/playwright-guide.md` と `references/form-filling.md` を読み込んで、その手順に従う。
+
 `form_type` フィールドに応じて処理方法を分岐する:
 
 | form_type | 処理 |
 |---|---|
-| `google_forms` | `references/form-filling.md` の「Google Forms の場合」に従い、`formResponse` POST で送信 |
-| `native_html` / `wordpress_cf7` / null | claude-in-chrome でブラウザ操作。`references/form-filling.md` の手順に従う |
+| `google_forms` | `references/form-filling.md` の「Google Forms の場合」に従い、`formResponse` POST で送信（ブラウザ不要） |
+| `native_html` / `wordpress_cf7` / null | playwright-cli でブラウザ操作。`references/form-filling.md` の基本フローに従う |
 | `iframe_embed` | スキップ。`status = 'failed'`, `error_message = 'iframe埋め込みフォームのためスキップ'` でログ記録 |
 | `with_captcha` | スキップ。`references/form-filling.md` の「reCAPTCHA / hCaptcha 等がある場合」に従う |
 
-`form_type` が null（未判定）の場合はブラウザ操作を試み、フォーム構造を確認してから判断する。**ただし、null の場合は1回の試行で失敗したら即スキップする**（iframe_embed や with_captcha だった場合のツールコール浪費を防ぐため）。
+`form_type` が null（未判定）の場合は playwright-cli でフォーム構造を確認してから判断する。**ただし、null の場合は1回の試行で失敗したら即スキップする**（iframe_embed や with_captcha だった場合のツールコール浪費を防ぐため）。
 
 **送信本文の検証:** outreach_logs に記録する前に、フォームに入力した本文（body）が空でないことを確認する。空の場合は送信失敗として `status = 'failed'`, `error_message = 'body empty'` で記録し、ステータスは `new` のまま維持する。
 
-送信成功時、`send_and_log.py --log-only` でログ記録+ステータス更新をアトミックに実行する:
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
-  --project "$0" --prospect-id <prospect_id> --log-only \
-  --channel form --subject "<subject>" --body "<body>"
-```
-
-送信失敗時:
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
-  --project "$0" --prospect-id <prospect_id> --log-only \
-  --channel form --subject "<subject>" --body "<body>" \
-  --status failed --error-message "<理由>"
-```
+**送信完了の判定とログ記録:** `references/form-filling.md` の「送信完了の判定」に従い、snapshot と network で確認してからログ記録する。
 
 ### 5. SNS DM
 
-claude-in-chromeを使用してSNSでDMを送る。対応プラットフォーム: **X（Twitter）** および **LinkedIn**。
+claude-in-chrome を使用してSNSでDMを送る（ログインセッションが必要なため）。対応プラットフォーム: **X（Twitter）** および **LinkedIn**。
 
 **メッセージ:** SNS用に短く簡潔にする。SALES_STRATEGY.mdの「SNSメッセージ」セクションを参考に。
 
