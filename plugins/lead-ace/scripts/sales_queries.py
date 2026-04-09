@@ -16,6 +16,7 @@ Commands:
   recent-outreach <project_id>         直近4営業日以内のアプローチ済み営業先
   data-sufficiency <project_id>        evaluate用のデータ充足度チェック
   last-evaluation <project_id>         最新のevaluation日時
+  evaluation-history <project_id>      evaluate による改善履歴（直近10件）
   existing-list <project_id>           登録済み営業先の直近50件
   all-prospect-identifiers <project_id>  全登録済み営業先の名前・URL一覧（重複回避用）
   eval-total-outreach <project_id>     アプローチ総数
@@ -180,6 +181,20 @@ def cmd_last_evaluation(conn: sqlite3.Connection, args: list[str]) -> None:
         " FROM evaluations"
         " WHERE project_id = ?"
         " ORDER BY evaluation_date DESC LIMIT 1",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_evaluation_history(conn: sqlite3.Connection, args: list[str]) -> None:
+    """evaluate による改善履歴（直近10件）"""
+    if len(args) < 1:
+        error_exit("Usage: evaluation-history <project_id>")
+    cursor = conn.execute(
+        "SELECT evaluation_date, improvements, findings"
+        " FROM evaluations"
+        " WHERE project_id = ?"
+        " ORDER BY evaluation_date DESC LIMIT 10",
         (args[0],),
     )
     print_json(rows_to_dicts(cursor.fetchall()))
@@ -371,6 +386,7 @@ COMMANDS: dict[str, tuple[str, Callable[[sqlite3.Connection, list[str]], None]]]
     "recent-outreach": ("直近アプローチ済み営業先", cmd_recent_outreach),
     "data-sufficiency": ("evaluate用データ充足度", cmd_data_sufficiency),
     "last-evaluation": ("最新evaluation日時", cmd_last_evaluation),
+    "evaluation-history": ("evaluate改善履歴（直近10件）", cmd_evaluation_history),
     "existing-list": ("登録済み営業先の直近50件", cmd_existing_list),
     "all-prospect-identifiers": ("全登録済み営業先の名前・URL一覧", cmd_all_prospect_identifiers),
     # 評価用クエリ
