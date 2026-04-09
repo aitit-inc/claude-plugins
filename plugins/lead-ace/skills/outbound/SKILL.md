@@ -186,6 +186,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'unreachable', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
 ```
 
+> **注意:** query_db.py による直接 UPDATE は `unreachable` / `inactive` 専用。`contacted` への更新は必ず `send_and_log.py` を経由すること（DBトリガーで outreach_logs なしの contacted 更新は拒否される）。
+
 **`unreachable` にすべきケース:**
 - メールアドレスが不正でバウンスした（恒久的なエラー）
 - SNSのDMが開放されていない
