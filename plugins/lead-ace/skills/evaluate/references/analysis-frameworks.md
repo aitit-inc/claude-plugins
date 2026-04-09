@@ -75,4 +75,4 @@
 ### アクション
 - SALES_STRATEGY.md のターゲット定義を更新
 - 検索キーワードを追加・削除
-- 優先度スコアの算出ロジックを調整（SQLで priority を再計算）
+- 優先度スコアの調整（`record_evaluation.py --priority-updates` で一括更新）
