@@ -23,8 +23,11 @@ MODULES = [
     "merge_prospects",
     "preflight",
     "query_db",
+    "record_evaluation",
+    "record_response",
     "sales_queries",
     "send_and_log",
+    "update_status",
 ]
 
 

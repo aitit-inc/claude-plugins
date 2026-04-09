@@ -25,12 +25,9 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
   --status failed --error-message "営業お断りの記載あり"
 
 # 2. project_prospects を unreachable に更新 + prospects の do_not_contact をグローバルに設定
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "UPDATE project_prospects SET status='unreachable', updated_at=datetime('now', 'localtime') WHERE project_id=? AND prospect_id=?" \
-  "$PROJECT_ID" "$PROSPECT_ID"
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db \
-  "UPDATE prospects SET do_not_contact=1, notes = CASE WHEN notes IS NOT NULL AND notes != '' THEN notes || CHAR(10) || '営業お断りの記載あり（フォームページ）' ELSE '営業お断りの記載あり（フォームページ）' END, updated_at=datetime('now', 'localtime') WHERE id=?" \
-  "$PROSPECT_ID"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/update_status.py data.db \
+  --project "$PROJECT_ID" --prospect-id $PROSPECT_ID --status unreachable \
+  --do-not-contact --dnc-reason "営業お断りの記載あり（フォームページ）"
 ```
 
 ## フォーム入力の方針

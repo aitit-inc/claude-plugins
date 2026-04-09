@@ -1,23 +1,32 @@
 #!/usr/bin/env python3
-"""営業DBの定型クエリ実行スクリプト
+"""営業DBの定型クエリ実行スクリプト（READ専用）
 
 Usage:
   sales_queries.py <db_path> <command> [args...]
 
 シェルのエスケープ問題を回避するため、シングルクォートを含む複雑なSQLを
-名前付きサブコマンドとして実行する。
+名前付きサブコマンドとして実行する。全コマンドは SELECT のみ（書き込みなし）。
 
 Commands:
   list-projects                        全プロジェクト一覧
   project-exists <project_id>          プロジェクトの存在確認
   count-reachable <project_id>         アプローチ可能な未送信営業先数（email/form/SNSいずれかあり）
+  count-reachable-by-channel <project_id>  チャネル別の未送信営業先数
   list-reachable <project_id> <limit>  アプローチ可能な未送信営業先リスト（email→form→SNSの優先順）
   recent-outreach <project_id>         直近4営業日以内のアプローチ済み営業先
   data-sufficiency <project_id>        evaluate用のデータ充足度チェック
   last-evaluation <project_id>         最新のevaluation日時
   existing-list <project_id>           登録済み営業先の直近50件
   all-prospect-identifiers <project_id>  全登録済み営業先の名前・URL一覧（重複回避用）
-  count-reachable-by-channel <project_id>  チャネル別の未送信営業先数
+  eval-total-outreach <project_id>     アプローチ総数
+  eval-channel-counts <project_id>     チャネル別アプローチ数
+  eval-response-counts <project_id>    反応数・ユニーク回答者数
+  eval-sentiment-breakdown <project_id> センチメント別・反応種別の内訳
+  eval-priority-response-rate <project_id> 優先度別反応率
+  eval-status-counts <project_id>      ステータス別営業先数
+  eval-channel-response-rate <project_id> チャネル別反応率
+  eval-responded-messages <project_id> 反応ありメッセージ全文
+  eval-no-response-sample <project_id> 反応なしメッセージサンプル
 """
 
 from __future__ import annotations
@@ -206,6 +215,150 @@ def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> N
 
 
 # ---------------------------------------------------------------------------
+# 評価用クエリ（evaluate スキル用）
+# ---------------------------------------------------------------------------
+
+def cmd_eval_total_outreach(conn: sqlite3.Connection, args: list[str]) -> None:
+    """アプローチ総数"""
+    if len(args) < 1:
+        error_exit("Usage: eval-total-outreach <project_id>")
+    cursor = conn.execute(
+        "SELECT COUNT(*) as total_outreach FROM outreach_logs WHERE project_id = ?",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_channel_counts(conn: sqlite3.Connection, args: list[str]) -> None:
+    """チャネル別アプローチ数"""
+    if len(args) < 1:
+        error_exit("Usage: eval-channel-counts <project_id>")
+    cursor = conn.execute(
+        "SELECT channel, COUNT(*) as count"
+        " FROM outreach_logs"
+        " WHERE project_id = ?"
+        " GROUP BY channel",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_response_counts(conn: sqlite3.Connection, args: list[str]) -> None:
+    """反応数・ユニーク回答者数"""
+    if len(args) < 1:
+        error_exit("Usage: eval-response-counts <project_id>")
+    cursor = conn.execute(
+        "SELECT"
+        "   COUNT(*) as total_responses,"
+        "   COUNT(DISTINCT o.prospect_id) as unique_responders"
+        " FROM responses r"
+        " JOIN outreach_logs o ON r.outreach_log_id = o.id"
+        " WHERE o.project_id = ?",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_sentiment_breakdown(conn: sqlite3.Connection, args: list[str]) -> None:
+    """センチメント別・反応種別の内訳"""
+    if len(args) < 1:
+        error_exit("Usage: eval-sentiment-breakdown <project_id>")
+    cursor = conn.execute(
+        "SELECT sentiment, response_type, COUNT(*) as count"
+        " FROM responses r"
+        " JOIN outreach_logs o ON r.outreach_log_id = o.id"
+        " WHERE o.project_id = ?"
+        " GROUP BY sentiment, response_type",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_priority_response_rate(conn: sqlite3.Connection, args: list[str]) -> None:
+    """優先度別の反応率"""
+    if len(args) < 1:
+        error_exit("Usage: eval-priority-response-rate <project_id>")
+    cursor = conn.execute(
+        "SELECT"
+        "   pp.priority,"
+        "   COUNT(DISTINCT CASE WHEN o.id IS NOT NULL THEN pp.prospect_id END) as contacted,"
+        "   COUNT(DISTINCT CASE WHEN r.id IS NOT NULL THEN pp.prospect_id END) as responded"
+        " FROM project_prospects pp"
+        " LEFT JOIN outreach_logs o ON pp.prospect_id = o.prospect_id AND o.project_id = pp.project_id"
+        " LEFT JOIN responses r ON o.id = r.outreach_log_id"
+        " WHERE pp.project_id = ?"
+        " GROUP BY pp.priority",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_status_counts(conn: sqlite3.Connection, args: list[str]) -> None:
+    """ステータス別営業先数"""
+    if len(args) < 1:
+        error_exit("Usage: eval-status-counts <project_id>")
+    cursor = conn.execute(
+        "SELECT status, COUNT(*) as count"
+        " FROM project_prospects"
+        " WHERE project_id = ?"
+        " GROUP BY status",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_channel_response_rate(conn: sqlite3.Connection, args: list[str]) -> None:
+    """チャネル別反応率"""
+    if len(args) < 1:
+        error_exit("Usage: eval-channel-response-rate <project_id>")
+    cursor = conn.execute(
+        "SELECT"
+        "   o.channel,"
+        "   COUNT(DISTINCT o.prospect_id) as contacted,"
+        "   COUNT(DISTINCT r.outreach_log_id) as responded,"
+        "   ROUND(CAST(COUNT(DISTINCT r.outreach_log_id) AS FLOAT)"
+        "     / NULLIF(COUNT(DISTINCT o.id), 0) * 100, 1) as response_rate_pct"
+        " FROM outreach_logs o"
+        " LEFT JOIN responses r ON o.id = r.outreach_log_id"
+        " WHERE o.project_id = ?"
+        " GROUP BY o.channel",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_responded_messages(conn: sqlite3.Connection, args: list[str]) -> None:
+    """反応があったメールの本文（全件）"""
+    if len(args) < 1:
+        error_exit("Usage: eval-responded-messages <project_id>")
+    cursor = conn.execute(
+        "SELECT o.id, o.channel, o.subject, o.body, r.sentiment, r.response_type"
+        " FROM outreach_logs o"
+        " JOIN responses r ON o.id = r.outreach_log_id"
+        " WHERE o.project_id = ?"
+        " ORDER BY r.received_at DESC",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+def cmd_eval_no_response_sample(conn: sqlite3.Connection, args: list[str]) -> None:
+    """反応がなかったメールの本文（サンプル10件）"""
+    if len(args) < 1:
+        error_exit("Usage: eval-no-response-sample <project_id>")
+    cursor = conn.execute(
+        "SELECT o.id, o.channel, o.subject, o.body"
+        " FROM outreach_logs o"
+        " LEFT JOIN responses r ON o.id = r.outreach_log_id"
+        " WHERE o.project_id = ? AND r.id IS NULL"
+        " ORDER BY o.sent_at DESC"
+        " LIMIT 10",
+        (args[0],),
+    )
+    print_json(rows_to_dicts(cursor.fetchall()))
+
+
+# ---------------------------------------------------------------------------
 # コマンドディスパッチ
 # ---------------------------------------------------------------------------
 
@@ -220,6 +373,16 @@ COMMANDS: dict[str, tuple[str, Callable[[sqlite3.Connection, list[str]], None]]]
     "last-evaluation": ("最新evaluation日時", cmd_last_evaluation),
     "existing-list": ("登録済み営業先の直近50件", cmd_existing_list),
     "all-prospect-identifiers": ("全登録済み営業先の名前・URL一覧", cmd_all_prospect_identifiers),
+    # 評価用クエリ
+    "eval-total-outreach": ("アプローチ総数", cmd_eval_total_outreach),
+    "eval-channel-counts": ("チャネル別アプローチ数", cmd_eval_channel_counts),
+    "eval-response-counts": ("反応数・ユニーク回答者数", cmd_eval_response_counts),
+    "eval-sentiment-breakdown": ("センチメント別・反応種別の内訳", cmd_eval_sentiment_breakdown),
+    "eval-priority-response-rate": ("優先度別反応率", cmd_eval_priority_response_rate),
+    "eval-status-counts": ("ステータス別営業先数", cmd_eval_status_counts),
+    "eval-channel-response-rate": ("チャネル別反応率", cmd_eval_channel_response_rate),
+    "eval-responded-messages": ("反応ありメッセージ全文", cmd_eval_responded_messages),
+    "eval-no-response-sample": ("反応なしメッセージサンプル", cmd_eval_no_response_sample),
 }
 
 

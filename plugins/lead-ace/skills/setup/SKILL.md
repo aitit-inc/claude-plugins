@@ -112,7 +112,7 @@ fi
 DBの `projects` テーブルにプロジェクトを登録する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT OR IGNORE INTO projects (id) VALUES (?)" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/init_db.py data.db --register-project "$0"
 ```
 
 ### 7. グローバル登録

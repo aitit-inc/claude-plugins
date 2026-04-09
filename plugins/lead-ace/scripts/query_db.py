@@ -1,6 +1,17 @@
 #!/usr/bin/env python3
 """SQL クエリ実行スクリプト（パラメータバインディング対応）
 
+**このスクリプトは /docker スキル専用。通常のスキルからは使用禁止。**
+
+通常の DB 操作には以下の専用スクリプトを使用すること:
+- READ クエリ: sales_queries.py
+- メール送信+ログ: send_and_log.py
+- 返信記録: record_response.py
+- ステータス更新: update_status.py
+- 評価記録: record_evaluation.py
+- 営業先登録: add_prospects.py
+- DB初期化: init_db.py
+
 Usage:
   query_db.py <db_path> <sql> [param1] [param2] ...
 

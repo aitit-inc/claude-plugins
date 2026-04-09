@@ -1,5 +1,5 @@
--- 評価用SQLクエリテンプレート
--- query_db.py で実行する。? プレースホルダにプロジェクトIDを渡すこと
+-- 評価用SQLクエリテンプレート（リファレンス用）
+-- 実行は sales_queries.py の eval-* コマンドを使用すること
 
 -- アプローチ総数
 SELECT COUNT(*) as total_outreach

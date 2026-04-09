@@ -105,33 +105,34 @@ SNSでDMを送った営業先について、claude-in-chromeで返信を確認�
 
 ### 5. データベース更新
 
-反応があった場合、responsesテーブルに記録する:
+反応があった場合、`record_response.py` で返信記録・ステータス更新・送付NG設定を1コマンドでアトミックに実行する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO responses (outreach_log_id, channel, content, sentiment, response_type) VALUES (?, ?, ?, ?, ?)" "<outreach_id>" "<channel>" "<content>" "<sentiment>" "<type>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_response.py data.db \
+  --project "$0" --prospect-id <prospect_id> \
+  --outreach-log-id <outreach_id> --channel <channel> \
+  --content "<返信内容>" \
+  --sentiment <positive|neutral|negative> \
+  --response-type <type> \
+  [--new-status <responded|rejected|inactive>] \
+  [--do-not-contact --dnc-reason "送付NG: <理由の要約>"]
 ```
 
-反応に応じてproject_prospectsのステータスを更新する:
-- ポジティブな返信 → `responded`
-- ミーティング依頼/日程調整完了通知 → `responded`
-- 明確な拒否 → `rejected`
-- バウンス → `inactive`
-- 自動返信のみ → `contacted` のまま
+反応に応じて `--new-status` を指定する:
+- ポジティブな返信 → `--new-status responded`
+- ミーティング依頼/日程調整完了通知 → `--new-status responded`
+- 明確な拒否 → `--new-status rejected`
+- バウンス → `--new-status inactive`
+- 自動返信のみ → `--new-status` を省略（`contacted` のまま）
 
 **response_type の種別:**
 `reply` / `auto_reply` / `bounce` / `meeting_request` / `scheduling_confirmation` / `rejection` 等
 
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = ?, updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "<new_status>" "$0" "<prospect_id>"
-```
+**送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、`--do-not-contact --dnc-reason "送付NG: <理由>"` を追加する。これは全プロジェクト共通で適用される。
 
-**送付NGの判定**: 返信内容に「今後の連絡は不要」「配信停止」「連絡しないでください」等のオプトアウトの意思が含まれている場合、prospects に送付NGフラグを立て、notes に理由を記録する。これは全プロジェクト共通で適用される。
+単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `--new-status rejected` のみで、`--do-not-contact` は付けない。
 
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE prospects SET do_not_contact = 1, notes = ?, updated_at = datetime('now', 'localtime') WHERE id = ?" "<既存のnotesがあれば保持>送付NG: <理由の要約>" "<prospect_id>"
-```
-
-単にこのプロジェクトの提案を断っただけ（「今回は見送ります」等）の場合は `project_prospects.status = 'rejected'` のみで、送付NGフラグは立てない。
+> **注意:** DB への直接 SQL 実行は禁止。返信記録は必ず `record_response.py` 経由で行うこと。
 
 ### 6. 返信ドラフト作成
 

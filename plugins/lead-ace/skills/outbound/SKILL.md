@@ -183,10 +183,19 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/send_and_log.py data.db \
 アプローチに失敗した営業先のうち、**構造的な理由**で今後もアプローチ不可能と判断できる場合は `unreachable` に更新する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET status = 'unreachable', updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id = ?" "$0" "<prospect_id>"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/update_status.py data.db \
+  --project "$0" --prospect-id <prospect_id> --status unreachable
 ```
 
-> **注意:** query_db.py による直接 UPDATE は `unreachable` / `inactive` 専用。`contacted` への更新は必ず `send_and_log.py` を経由すること（DBトリガーで outreach_logs なしの contacted 更新は拒否される）。
+営業お断りの場合は `--do-not-contact` を追加して全プロジェクトで除外する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/update_status.py data.db \
+  --project "$0" --prospect-id <prospect_id> --status unreachable \
+  --do-not-contact --dnc-reason "営業お断りの記載あり"
+```
+
+> **注意:** DB への直接 SQL 実行は禁止。ステータス更新は必ず専用スクリプト経由で行うこと（`contacted` → `send_and_log.py`、`responded`/`rejected` → `record_response.py`、`unreachable`/`inactive` → `update_status.py`）。
 
 **`unreachable` にすべきケース:**
 - メールアドレスが不正でバウンスした（恒久的なエラー）

@@ -30,12 +30,18 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
 
 - プロジェクトディレクトリ名: `$0`（必須）
 
-`${CLAUDE_PLUGIN_ROOT}/skills/evaluate/references/evaluation-queries.sql` のクエリテンプレートを使い、各クエリの `?` プレースホルダに `$0` を渡して `query_db.py` で順次実行する。各クエリの結果を分析用に保持する。
-
-実行例:
+`sales_queries.py` の `eval-*` コマンドを順次実行し、各結果を分析用に保持する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "SELECT COUNT(*) as total_outreach FROM outreach_logs WHERE project_id = ?" "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-total-outreach "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-channel-counts "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-response-counts "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-sentiment-breakdown "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-priority-response-rate "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-status-counts "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-channel-response-rate "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-responded-messages "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db eval-no-response-sample "$0"
 ```
 
 ### 2. 既存戦略の読み込み
@@ -130,19 +136,25 @@ evaluateは毎日実行されるが、戦略を頻繁に変えすぎないこと
 SEARCH_NOTES.md が存在しない場合はスキップする（build-list 未実行の状態なので）。
 
 **優先度の再計算:**
-- 反応パターンに基づいてprospectsの優先度を更新
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "UPDATE project_prospects SET priority = ?, updated_at = datetime('now', 'localtime') WHERE project_id = ? AND prospect_id IN (SELECT id FROM prospects WHERE industry = ?) AND status = 'new'" "<new_priority>" "$0" "<industry>"
-```
+- 反応パターンに基づいてprospectsの優先度を更新（ステップ5で一括実行）
 
 ### 5. 評価記録の保存
 
-evaluationsテーブルに記録する:
+`record_evaluation.py` で評価記録と優先度更新をアトミックに実行する:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/query_db.py data.db "INSERT INTO evaluations (project_id, metrics, findings, improvements) VALUES (?, ?, ?, ?)" "$0" "<metrics_json>" "<findings>" "<improvements_json>"
+echo "<findings_text>" > /tmp/eval_findings.txt
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_evaluation.py data.db \
+  --project "$0" \
+  --metrics '<metrics_json>' \
+  --findings-file /tmp/eval_findings.txt \
+  --improvements '<improvements_json>' \
+  --priority-updates '[{"industry": "<industry>", "priority": <1-5>}, ...]'
 ```
+
+`--priority-updates` は省略可能（データ不足で優先度変更なしの場合）。
+
+> **注意:** DB への直接 SQL 実行は禁止。評価記録は必ず `record_evaluation.py` 経由で行うこと。
 
 ### 6. 結果レポート
 
