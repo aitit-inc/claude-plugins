@@ -115,7 +115,7 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 2:
         args.append("30")
     cursor = conn.execute(
-        "SELECT p.id, p.company_name, p.overview, p.email,"
+        "SELECT p.id, p.company_name, p.contact_name, p.overview, p.email,"
         " p.contact_form_url, p.form_type, p.sns_accounts, pp.match_reason, pp.priority"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
