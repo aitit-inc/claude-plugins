@@ -1,5 +1,5 @@
 ---
-name: docker
+name: lead-ace-doctor
 description: "緊急時のDB直接操作。専用スクリプトでは対応できないDB修正・調査が必要な場合に使用する。"
 argument-hint: "<修正内容の説明>"
 ---
