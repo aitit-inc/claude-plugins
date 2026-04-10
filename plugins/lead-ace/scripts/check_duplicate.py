@@ -45,7 +45,7 @@ def check_corporate_number(conn: sqlite3.Connection, number: str) -> list[Duplic
     if org is None:
         # organizations に無くても旧データの prospects にあるかもしれない
         cursor = conn.execute(
-            "SELECT id, name FROM prospects WHERE corporate_number = ?",
+            "SELECT id, name FROM prospects WHERE organization_id = ?",
             (number,),
         )
         return [
@@ -60,7 +60,7 @@ def check_corporate_number(conn: sqlite3.Connection, number: str) -> list[Duplic
 
     # organizations にある → 紐づく prospects を返す
     cursor = conn.execute(
-        "SELECT id, name FROM prospects WHERE corporate_number = ?",
+        "SELECT id, name FROM prospects WHERE organization_id = ?",
         (number,),
     )
     results = [
@@ -151,7 +151,7 @@ def check_name(conn: sqlite3.Connection, name: str) -> list[DuplicateMatch]:
     org_cursor = conn.execute(
         "SELECT o.corporate_number, o.name, p.id, p.name"
         " FROM organizations o"
-        " LEFT JOIN prospects p ON o.corporate_number = p.corporate_number"
+        " LEFT JOIN prospects p ON o.corporate_number = p.organization_id"
         " WHERE o.normalized_name = ?",
         (normalized,),
     )
@@ -193,7 +193,7 @@ def check_website_domain(conn: sqlite3.Connection, url: str) -> list[DuplicateMa
     org_cursor = conn.execute(
         "SELECT o.corporate_number, o.name, p.id, p.name"
         " FROM organizations o"
-        " LEFT JOIN prospects p ON o.corporate_number = p.corporate_number"
+        " LEFT JOIN prospects p ON o.corporate_number = p.organization_id"
         " WHERE o.domain = ?",
         (domain,),
     )

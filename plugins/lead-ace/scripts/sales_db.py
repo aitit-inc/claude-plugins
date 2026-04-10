@@ -55,7 +55,7 @@ class Prospect(TypedDict, total=False):
     id: int
     name: str  # 営業先名（法人名・学校名等。小さい会社は organizations.name と同じ）
     contact_name: str | None
-    corporate_number: str | None  # FK → organizations（レガシーデータは NULL）
+    organization_id: str | None  # FK → organizations.corporate_number（レガシーデータは NULL）
     department: str | None  # 法人内の区分（部署名・学科名等）
     overview: str
     industry: str | None
@@ -129,7 +129,7 @@ _PROSPECT_AUTO_FIELDS = frozenset({"id", "created_at", "updated_at"})
 
 # Phase 1（候補収集）で取得するフィールド
 PROSPECT_CANDIDATE_FIELDS: tuple[str, ...] = (
-    "name", "corporate_number", "department", "overview", "industry", "website_url",
+    "name", "organization_id", "department", "overview", "industry", "website_url",
 )
 
 # Phase 2（連絡先取得）で取得するフィールド

@@ -118,10 +118,10 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
     cursor = conn.execute(
         "SELECT p.id, p.name, p.contact_name, p.department, p.overview, p.email,"
         " p.contact_form_url, p.form_type, p.sns_accounts,"
-        " p.corporate_number, pp.match_reason, pp.priority"
+        " p.organization_id, pp.match_reason, pp.priority"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
-        " LEFT JOIN organizations o ON p.corporate_number = o.corporate_number"
+        " LEFT JOIN organizations o ON p.organization_id = o.corporate_number"
         " WHERE pp.project_id = ? AND pp.status = 'new'"
         " AND p.do_not_contact = 0"
         " AND ("
@@ -207,7 +207,7 @@ def cmd_existing_list(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 1:
         error_exit("Usage: existing-list <project_id>")
     cursor = conn.execute(
-        "SELECT p.name, p.department, p.corporate_number, p.industry, p.website_url"
+        "SELECT p.name, p.department, p.organization_id, p.industry, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?"
@@ -222,7 +222,7 @@ def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> N
     if len(args) < 1:
         error_exit("Usage: all-prospect-identifiers <project_id>")
     cursor = conn.execute(
-        "SELECT p.name, p.corporate_number, p.website_url"
+        "SELECT p.name, p.organization_id, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?",

@@ -4,7 +4,7 @@
 Usage:
   python3 lookup_corporate_numbers.py <db_path> [--limit N]
 
-corporate_number が NULL の prospects を抽出し、check_corporate_number.py（国税庁サイト検索）
+organization_id が NULL の prospects を抽出し、check_corporate_number.py（国税庁サイト検索）
 で法人番号の候補を検索する。DBの更新は行わない（候補の確定は LLM または人間が判断する）。
 
 Output: JSON
@@ -98,11 +98,11 @@ def main() -> None:
 
     conn = get_connection(db_path)
 
-    # corporate_number が NULL の prospects を取得（重複する name は1件だけ）
+    # organization_id が NULL の prospects を取得（重複する name は1件だけ）
     cursor = conn.execute(
         "SELECT id, name, website_url"
         " FROM prospects"
-        " WHERE corporate_number IS NULL"
+        " WHERE organization_id IS NULL"
         " GROUP BY name"
         " ORDER BY id ASC"
         " LIMIT ?",

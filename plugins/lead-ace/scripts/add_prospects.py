@@ -103,6 +103,7 @@ class ResultSummary(TypedDict):
 # ---------------------------------------------------------------------------
 
 PROSPECT_REQUIRED = ("name", "corporate_number", "overview", "website_url")
+# 入力JSONでは corporate_number、DBカラムは organization_id
 PROJECT_PROSPECT_REQUIRED = ("match_reason",)
 
 
@@ -203,7 +204,7 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
 
     sql = (
         "INSERT INTO prospects"
-        " (name, contact_name, corporate_number, department, overview, industry,"
+        " (name, contact_name, organization_id, department, overview, industry,"
         " website_url, email, contact_form_url, form_type, sns_accounts,"
         " do_not_contact, notes)"
         " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"

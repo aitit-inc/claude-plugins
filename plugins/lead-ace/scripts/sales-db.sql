@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,  -- 営業先名（法人名・学校名・部署名等。小さい会社は organizations.name と同じ）
     contact_name TEXT,  -- 担当者名
-    corporate_number TEXT REFERENCES organizations(corporate_number),  -- 法人番号FK（レガシーデータはNULL）
+    organization_id TEXT REFERENCES organizations(corporate_number),  -- FK → organizations（レガシーデータはNULL）
     department TEXT,  -- 部署名・拠点名（なければNULL。学校法人の場合は学校名）
     overview TEXT NOT NULL,
     industry TEXT,
@@ -96,7 +96,7 @@ CREATE INDEX IF NOT EXISTS idx_org_normalized_name ON organizations(normalized_n
 -- Indexes: prospects（二重送信防止の UNIQUE 制約）
 CREATE UNIQUE INDEX IF NOT EXISTS idx_prospect_unique_email ON prospects(email) WHERE email IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_prospect_unique_form ON prospects(contact_form_url) WHERE contact_form_url IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_prospect_org ON prospects(corporate_number);
+CREATE INDEX IF NOT EXISTS idx_prospect_org ON prospects(organization_id);
 
 -- Indexes: project_prospects
 CREATE INDEX IF NOT EXISTS idx_project_prospects_project ON project_prospects(project_id);
