@@ -51,10 +51,12 @@ from sales_db import DuplicateMatch, error_exit, get_connection, print_json, ups
 
 class ProspectEntry(TypedDict, total=False):
     """入力JSON配列の各エントリ"""
-    # prospects 用
-    name: str
-    contact_name: str
+    # organizations 用
+    organization_name: str  # 正式法人名（check_corporate_number.py で確認した名称）
     corporate_number: str
+    # prospects 用
+    name: str  # 営業先名（学校名・会社名等）
+    contact_name: str
     department: str
     overview: str
     industry: str
@@ -102,8 +104,7 @@ class ResultSummary(TypedDict):
 # 定数
 # ---------------------------------------------------------------------------
 
-PROSPECT_REQUIRED = ("name", "corporate_number", "overview", "website_url")
-# 入力JSONでは corporate_number、DBカラムは organization_id
+PROSPECT_REQUIRED = ("name", "organization_name", "corporate_number", "overview", "website_url")
 PROJECT_PROSPECT_REQUIRED = ("match_reason",)
 
 
@@ -187,16 +188,20 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     do_not_contact = 1 if entry.get("do_not_contact") else 0
     notes = entry.get("notes")
 
-    # organizations に upsert（corporate_number は必須）
+    # organizations に upsert（正式法人名で登録）
     corp_num = entry.get("corporate_number")
-    name = entry.get("name")
+    org_name = entry.get("organization_name")
+    prospect_name = entry.get("name")
     website_url = entry.get("website_url")
-    if not corp_num or not name or not website_url:
-        raise ValueError(f"corporate_number, name, website_url は必須です（name={name}）")
+    if not corp_num or not org_name or not prospect_name or not website_url:
+        raise ValueError(
+            f"corporate_number, organization_name, name, website_url は必須です"
+            f"（organization_name={org_name}, name={prospect_name}）"
+        )
     upsert_organization(
         conn,
         corporate_number=corp_num,
-        name=name,
+        name=org_name,
         website_url=website_url,
         industry=entry.get("industry"),
         overview=entry.get("overview"),
@@ -212,7 +217,7 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     cursor = conn.execute(
         sql,
         (
-            name,
+            prospect_name,
             entry.get("contact_name"),
             corp_num,
             entry.get("department"),

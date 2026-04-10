@@ -110,12 +110,14 @@ candidates を収集した後、法人番号が未取得の候補については
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_corporate_number.py "{会社名}"
 ```
 
-stdout に JSON が出力される。`results` 配列の `number` が法人番号（13桁）。
-- 1件ヒット → その法人番号を採用
+stdout に JSON が出力される。`results` 配列から `number`（法人番号）と `name`（正式法人名）を取得する。
+- 1件ヒット → `number` を `corporate_number`、`name` を `organization_name` として採用
 - 複数ヒット → 住所や公式サイト情報と照合して正しい候補を特定する。確信が持てない場合は WebSearch + fetch_url.py で確認
 - 0件 → 法人格を除去した名前や読み仮名（`--kana`）で再検索を試みる
 
 法人番号が見つからない候補はリストに含めない（organizations テーブルは法人番号が PK のため登録不可）。
+
+**注意:** `organization_name` は NTA で確認した正式法人名（例: 「学校法人片柳学園」）であり、営業先名（`name`、例: 「日本工学院専門学校」）とは異なる場合がある。
 
 **探索のコツ:**
 - 1つの検索クエリで見つかる営業先は限られるので、多角的にクエリを変えて探索する
@@ -157,7 +159,7 @@ stdout に JSON が出力される。`results` 配列の `number` が法人番�
 Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バッチごとにサブエージェントを起動して連絡先情報を取得する。
 
 各サブエージェントのプロンプトに以下を含める:
-- 担当する候補のリスト（name, corporate_number, website_url, overview, industry, department, match_reason, priority）
+- 担当する候補のリスト（name, organization_name, corporate_number, website_url, overview, industry, department, match_reason, priority）
 - `${CLAUDE_PLUGIN_ROOT}/skills/build-list/references/enrich-contacts.md` を読み込んで、その手順に従うこと
 - 各候補の公式サイトを探索し、メールアドレス・フォームURLを取得すること
 - ページ取得には `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url <URL> --prompt <指示>` を使うこと（WebFetch は使わない）
@@ -165,7 +167,7 @@ Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バ�
 
 サブエージェントの allowed-tools: `Bash`, `WebSearch`, `Read`
 
-サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（name, corporate_number, overview, website_url, industry, department, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
+サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（name, organization_name, corporate_number, overview, website_url, industry, department, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
 
 ### 6b. 連絡先なし候補の再探索（該当がある場合のみ）
 
@@ -202,7 +204,8 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /t
 cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
 [
   {
-    "name": "営業先名",
+    "name": "営業先名（学校名・会社名等）",
+    "organization_name": "正式法人名（check_corporate_number.pyの結果）",
     "corporate_number": "1234567890123",
     "department": null,
     "overview": "事業概要（1-2文）",
@@ -219,22 +222,26 @@ EOF
 ```
 
 **organizations と prospects の役割の違い:**
-- `organizations` = **法人**単位（法人番号が PK）。`name` には `check_corporate_number.py` で確認した**正式法人名**を入れる（例: 「学校法人片柳学園」）
-- `prospects` = **営業先**単位（法人内の学校・部署・拠点など）。`name` には営業先の名称（例: 「日本工学院専門学校」）、`department` には法人内の区分（学校名・部署名等）を入れる
+- `organizations` = **法人**単位（法人番号が PK）。`check_corporate_number.py` で確認した正式法人名が自動登録される
+- `prospects` = **営業先**単位。`name` には実際の営業先名を入れる。`department` は営業先の中の部署（あれば）
 
-学校法人の場合の例:
+小さい会社の場合: org.name = pros.name（1対1、department は null）
+学校法人の場合: org.name = 「学校法人片柳学園」、pros.name = 「日本工学院専門学校」（1対多もあり得る）
+大企業の部署宛: org.name = 「株式会社○○」、pros.name = 「株式会社○○」、department = 「営業企画部」
+
 ```json
 {
-  "name": "学校法人片柳学園",
+  "name": "日本工学院専門学校",
+  "organization_name": "学校法人片柳学園",
   "corporate_number": "9010805001803",
-  "department": "日本工学院専門学校",
+  "department": null,
   ...
 }
 ```
 
 **各フィールド:**
-- 必須: `name`（正式法人名）, `corporate_number`, `overview`, `website_url`, `match_reason`
-- 省略可: `department`（法人内の営業先区分）, `industry`, `email`, `contact_form_url`, `sns_accounts`
+- 必須: `name`（営業先名）, `organization_name`（正式法人名）, `corporate_number`（法人番号）, `overview`, `website_url`, `match_reason`
+- 省略可: `department`, `industry`, `email`, `contact_form_url`, `sns_accounts`
 - `priority`: 省略時デフォルト3
 
 **スクリプトの動作:**

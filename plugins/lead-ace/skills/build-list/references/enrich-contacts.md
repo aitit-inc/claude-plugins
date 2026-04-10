@@ -5,10 +5,12 @@
 ## 入力
 
 営業先候補のリスト。各候補には最低限以下が含まれる:
-- `name`: 法人名・学校名等
+- `name`: 営業先名（学校名・会社名等）
+- `organization_name`: 正式法人名（check_corporate_number.py で確認済み）
+- `corporate_number`: 法人番号（13桁）
 - `website_url`: 公式サイトURL
 - `overview`: 事業概要
-- その他 build-list Phase 1 で取得済みの情報（industry 等）
+- その他 build-list Phase 1 で取得済みの情報（industry, department 等）
 
 ## 探索手順
 
@@ -114,6 +116,7 @@ WebSearch で以下を検索する（1〜2クエリ）:
 [
   {
     "name": "A社",
+    "organization_name": "A社（正式法人名）",
     "corporate_number": "1234567890123",
     "department": null,
     "contact_name": "山田太郎",

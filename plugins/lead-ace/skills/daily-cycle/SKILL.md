@@ -222,8 +222,8 @@ build-list スキルはサブエージェント内でさらにサブエージェ
 - プロジェクトディレクトリ: `$0`
 - 目標件数
 - `${CLAUDE_PLUGIN_ROOT}/skills/build-list/SKILL.md` の Phase 1（ステップ1〜5）を読み込んで、その手順に従うこと
-- **連絡先（メール・フォーム等）の取得は不要**。候補の名前・公式URL・概要・業種・マッチ理由・優先度のみ収集すること
-- 完了後、候補リストをJSON配列で返すこと（各オブジェクト: name, website_url, overview, industry, match_reason, priority（1-5の数値。build-list SKILL.mdの定義に従う））
+- **連絡先（メール・フォーム等）の取得は不要**。候補の名前・法人番号・正式法人名・公式URL・概要・業種・マッチ理由・優先度を収集すること
+- 完了後、候補リストをJSON配列で返すこと（各オブジェクト: name, organization_name, corporate_number, website_url, overview, industry, match_reason, priority（1-5の数値。build-list SKILL.mdの定義に従う））
 - 探索メモ（`$0/SEARCH_NOTES.md`）の更新も行うこと
 
 **8b. 重複フィルタ（メインコンテキスト）**
