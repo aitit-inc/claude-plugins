@@ -53,10 +53,10 @@ class Organization(TypedDict, total=False):
 
 class Prospect(TypedDict, total=False):
     id: int
-    company_name: str
+    name: str  # 営業先名（法人名・学校名等。小さい会社は organizations.name と同じ）
     contact_name: str | None
     corporate_number: str | None  # FK → organizations（レガシーデータは NULL）
-    department: str | None  # 部署名・拠点名（学校法人の場合は学校名）
+    department: str | None  # 法人内の区分（部署名・学科名等）
     overview: str
     industry: str | None
     website_url: str
@@ -115,7 +115,7 @@ class Evaluation(TypedDict, total=False):
 class DuplicateMatch(TypedDict):
     match_type: MatchType
     prospect_id: int
-    company_name: str
+    name: str  # 営業先名
     reason: str
 
 
@@ -129,7 +129,7 @@ _PROSPECT_AUTO_FIELDS = frozenset({"id", "created_at", "updated_at"})
 
 # Phase 1（候補収集）で取得するフィールド
 PROSPECT_CANDIDATE_FIELDS: tuple[str, ...] = (
-    "company_name", "corporate_number", "department", "overview", "industry", "website_url",
+    "name", "corporate_number", "department", "overview", "industry", "website_url",
 )
 
 # Phase 2（連絡先取得）で取得するフィールド

@@ -5,7 +5,7 @@
 ## 入力
 
 営業先候補のリスト。各候補には最低限以下が含まれる:
-- `company_name`: 法人名・学校名等
+- `name`: 法人名・学校名等
 - `website_url`: 公式サイトURL
 - `overview`: 事業概要
 - その他 build-list Phase 1 で取得済みの情報（industry 等）
@@ -113,7 +113,7 @@ WebSearch で以下を検索する（1〜2クエリ）:
 ```json
 [
   {
-    "company_name": "A社",
+    "name": "A社",
     "corporate_number": "1234567890123",
     "department": null,
     "contact_name": "山田太郎",

@@ -53,7 +53,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/sales_queries.py data.db all-prospect-identifiers "$0"
 ```
 
-この結果（company_name + website_url の一覧）を保持する。Phase 1 の候補収集で、ここに含まれる営業先は **候補に入れない**。名称完全一致またはwebsite_urlのドメイン一致で判定する。
+この結果（name + website_url の一覧）を保持する。Phase 1 の候補収集で、ここに含まれる営業先は **候補に入れない**。名称完全一致またはwebsite_urlのドメイン一致で判定する。
 
 **2b. 探索メモ:**
 
@@ -157,7 +157,7 @@ stdout に JSON が出力される。`results` 配列の `number` が法人番�
 Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バッチごとにサブエージェントを起動して連絡先情報を取得する。
 
 各サブエージェントのプロンプトに以下を含める:
-- 担当する候補のリスト（company_name, corporate_number, website_url, overview, industry, department, match_reason, priority）
+- 担当する候補のリスト（name, corporate_number, website_url, overview, industry, department, match_reason, priority）
 - `${CLAUDE_PLUGIN_ROOT}/skills/build-list/references/enrich-contacts.md` を読み込んで、その手順に従うこと
 - 各候補の公式サイトを探索し、メールアドレス・フォームURLを取得すること
 - ページ取得には `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url <URL> --prompt <指示>` を使うこと（WebFetch は使わない）
@@ -165,7 +165,7 @@ Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バ�
 
 サブエージェントの allowed-tools: `Bash`, `WebSearch`, `Read`
 
-サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（company_name, corporate_number, overview, website_url, industry, department, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
+サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（name, corporate_number, overview, website_url, industry, department, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
 
 ### 6b. 連絡先なし候補の再探索（該当がある場合のみ）
 
@@ -194,7 +194,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /t
   | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
 ```
 
-マージは company_name + website_url のドメインで突き合わせる。連絡先が見つからなかった候補も（email=null等のまま）登録される。マージの未マッチ件数は stderr に出力される。
+マージは name + website_url のドメインで突き合わせる。連絡先が見つからなかった候補も（email=null等のまま）登録される。マージの未マッチ件数は stderr に出力される。
 
 **サブエージェントの出力がそのまま add_prospects.py に渡せる形式の場合**（Phase 1 の全フィールド + 連絡先を含む完全なJSON）は、マージスクリプトを省略してそのまま渡してもよい:
 
@@ -202,7 +202,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /t
 cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0"
 [
   {
-    "company_name": "営業先名",
+    "name": "営業先名",
     "corporate_number": "1234567890123",
     "department": null,
     "overview": "事業概要（1-2文）",
@@ -218,14 +218,28 @@ cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0
 EOF
 ```
 
+**organizations と prospects の役割の違い:**
+- `organizations` = **法人**単位（法人番号が PK）。`name` には `check_corporate_number.py` で確認した**正式法人名**を入れる（例: 「学校法人片柳学園」）
+- `prospects` = **営業先**単位（法人内の学校・部署・拠点など）。`name` には営業先の名称（例: 「日本工学院専門学校」）、`department` には法人内の区分（学校名・部署名等）を入れる
+
+学校法人の場合の例:
+```json
+{
+  "name": "学校法人片柳学園",
+  "corporate_number": "9010805001803",
+  "department": "日本工学院専門学校",
+  ...
+}
+```
+
 **各フィールド:**
-- 必須: `company_name`, `corporate_number`, `overview`, `website_url`, `match_reason`
-- 省略可: `department`, `industry`, `email`, `contact_form_url`, `sns_accounts`
+- 必須: `name`（正式法人名）, `corporate_number`, `overview`, `website_url`, `match_reason`
+- 省略可: `department`（法人内の営業先区分）, `industry`, `email`, `contact_form_url`, `sns_accounts`
 - `priority`: 省略時デフォルト3
 
 **スクリプトの動作:**
 - 各エントリについて自動で重複チェックを行う（法人番号→email→フォームURL→SNS→名称→ドメインの順）
-- corporate_number がある場合、organizations テーブルに自動 upsert される
+- corporate_number は必須。organizations テーブルに自動 upsert される
 - email / contact_form_url はグローバル UNIQUE 制約で二重送信を防止
 - `EXACT_MATCH`: 既存prospect_idを使い、project_prospectsへの紐付けのみ行う
 - `POSSIBLE_MATCH`（ドメイン一致等）: 新規登録するが、出力に `possible_matches` として報告する

@@ -10,7 +10,7 @@ prospects（営業先マスタ）と project_prospects（プロジェクト紐�
 
 JSON配列の各オブジェクト:
   prospects用:
-    company_name (必須), overview (必須), website_url (必須),
+    name (必須), overview (必須), website_url (必須),
     contact_name, corporate_number, industry, email, contact_form_url, form_type, sns_accounts
   project_prospects用:
     match_reason (必須), priority (省略時: 3)
@@ -36,7 +36,7 @@ import sys
 from typing import TypedDict, cast
 
 from check_duplicate import (  # pyright: ignore[reportMissingModuleSource]
-    check_company_name,
+    check_name,
     check_corporate_number,
     check_email,
     check_sns,
@@ -52,7 +52,7 @@ from sales_db import DuplicateMatch, error_exit, get_connection, print_json, ups
 class ProspectEntry(TypedDict, total=False):
     """入力JSON配列の各エントリ"""
     # prospects 用
-    company_name: str
+    name: str
     contact_name: str
     corporate_number: str
     department: str
@@ -80,7 +80,7 @@ class PossibleMatch(TypedDict):
 class EntryDetail(TypedDict, total=False):
     """各エントリの処理結果"""
     index: int
-    company_name: str
+    name: str
     status: str  # "added" | "duplicate" | "linked_existing" | "error"
     prospect_id: int
     messages: list[str]
@@ -102,7 +102,7 @@ class ResultSummary(TypedDict):
 # 定数
 # ---------------------------------------------------------------------------
 
-PROSPECT_REQUIRED = ("company_name", "overview", "website_url")
+PROSPECT_REQUIRED = ("name", "corporate_number", "overview", "website_url")
 PROJECT_PROSPECT_REQUIRED = ("match_reason",)
 
 
@@ -152,9 +152,9 @@ def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[Dupl
     if corporate_number:
         matches.extend(check_corporate_number(conn, corporate_number))
 
-    company_name = entry.get("company_name")
-    if company_name:
-        matches.extend(check_company_name(conn, company_name))
+    name = entry.get("name")
+    if name:
+        matches.extend(check_name(conn, name))
 
     website_url = entry.get("website_url")
     if website_url:
@@ -186,23 +186,24 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     do_not_contact = 1 if entry.get("do_not_contact") else 0
     notes = entry.get("notes")
 
-    # organizations に upsert（corporate_number がある場合）
+    # organizations に upsert（corporate_number は必須）
     corp_num = entry.get("corporate_number")
-    company_name = entry.get("company_name")
+    name = entry.get("name")
     website_url = entry.get("website_url")
-    if corp_num and company_name and website_url:
-        upsert_organization(
-            conn,
-            corporate_number=corp_num,
-            name=company_name,
-            website_url=website_url,
-            industry=entry.get("industry"),
-            overview=entry.get("overview"),
-        )
+    if not corp_num or not name or not website_url:
+        raise ValueError(f"corporate_number, name, website_url は必須です（name={name}）")
+    upsert_organization(
+        conn,
+        corporate_number=corp_num,
+        name=name,
+        website_url=website_url,
+        industry=entry.get("industry"),
+        overview=entry.get("overview"),
+    )
 
     sql = (
         "INSERT INTO prospects"
-        " (company_name, contact_name, corporate_number, department, overview, industry,"
+        " (name, contact_name, corporate_number, department, overview, industry,"
         " website_url, email, contact_form_url, form_type, sns_accounts,"
         " do_not_contact, notes)"
         " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
@@ -210,7 +211,7 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     cursor = conn.execute(
         sql,
         (
-            company_name,
+            name,
             entry.get("contact_name"),
             corp_num,
             entry.get("department"),
@@ -298,7 +299,7 @@ def main() -> None:
         for i, entry in enumerate(data):
             detail = EntryDetail(
                 index=i,
-                company_name=entry.get("company_name", ""),
+                name=entry.get("name", ""),
             )
 
             # バリデーション

@@ -223,7 +223,7 @@ build-list スキルはサブエージェント内でさらにサブエージェ
 - 目標件数
 - `${CLAUDE_PLUGIN_ROOT}/skills/build-list/SKILL.md` の Phase 1（ステップ1〜5）を読み込んで、その手順に従うこと
 - **連絡先（メール・フォーム等）の取得は不要**。候補の名前・公式URL・概要・業種・マッチ理由・優先度のみ収集すること
-- 完了後、候補リストをJSON配列で返すこと（各オブジェクト: company_name, website_url, overview, industry, match_reason, priority（1-5の数値。build-list SKILL.mdの定義に従う））
+- 完了後、候補リストをJSON配列で返すこと（各オブジェクト: name, website_url, overview, industry, match_reason, priority（1-5の数値。build-list SKILL.mdの定義に従う））
 - 探索メモ（`$0/SEARCH_NOTES.md`）の更新も行うこと
 
 **8b. 重複フィルタ（メインコンテキスト）**
@@ -236,7 +236,7 @@ cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/filter_duplicates.py data.db
 EOF
 ```
 
-スクリプトが company_name の完全一致と website_url のドメイン一致で重複を自動除外し、新規候補のみをJSON配列で出力する（除外結果のサマリーは stderr に出力される）。出力されたJSON配列を 8c に渡す。
+スクリプトが name の完全一致と website_url のドメイン一致で重複を自動除外し、新規候補のみをJSON配列で出力する（除外結果のサマリーは stderr に出力される）。出力されたJSON配列を 8c に渡す。
 
 新規候補が0件の場合は 8c・8d をスキップし、完了レポートで報告する。
 
@@ -255,7 +255,7 @@ EOF
 8c の結果で email / contact_form_url の両方が null の候補がある場合、サブエージェントを起動して公式サイト以外の情報源から補完を試みる。
 
 プロンプトに以下を含める:
-- 対象候補のリスト（company_name, website_url）。最大10件まで
+- 対象候補のリスト（name, website_url）。最大10件まで
 - 各候補について WebSearch で `"{会社名}" メールアドレス` `"{会社名}" 問い合わせ` 等を検索し、業界ディレクトリやプレスリリース配信サイト等から連絡先を探すこと
 - 見つかった連絡先（email, contact_form_url, sns_accounts）をJSON配列で返すこと
 - 見つからなかった候補は結果に含めなくてよい
@@ -270,7 +270,7 @@ EOF
 - 8b の出力 → `/tmp/candidates.json`
 - 8c の各サブエージェントの出力を1つのJSON配列に結合 → `/tmp/contacts.json`
 
-`merge_prospects.py` で company_name + ドメインで突き合わせマージし、そのまま `add_prospects.py` に渡す:
+`merge_prospects.py` で name + ドメインで突き合わせマージし、そのまま `add_prospects.py` に渡す:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/merge_prospects.py /tmp/candidates.json /tmp/contacts.json \

@@ -116,7 +116,7 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 2:
         args.append("30")
     cursor = conn.execute(
-        "SELECT p.id, p.company_name, p.contact_name, p.department, p.overview, p.email,"
+        "SELECT p.id, p.name, p.contact_name, p.department, p.overview, p.email,"
         " p.contact_form_url, p.form_type, p.sns_accounts,"
         " p.corporate_number, pp.match_reason, pp.priority"
         " FROM prospects p"
@@ -148,7 +148,7 @@ def cmd_recent_outreach(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 1:
         error_exit("Usage: recent-outreach <project_id>")
     cursor = conn.execute(
-        "SELECT p.id, p.company_name, p.email, p.website_url, p.sns_accounts,"
+        "SELECT p.id, p.name, p.email, p.website_url, p.sns_accounts,"
         " o.id as outreach_id, o.channel, o.subject, o.sent_at"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
@@ -207,7 +207,7 @@ def cmd_existing_list(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 1:
         error_exit("Usage: existing-list <project_id>")
     cursor = conn.execute(
-        "SELECT p.company_name, p.department, p.corporate_number, p.industry, p.website_url"
+        "SELECT p.name, p.department, p.corporate_number, p.industry, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?"
@@ -222,7 +222,7 @@ def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> N
     if len(args) < 1:
         error_exit("Usage: all-prospect-identifiers <project_id>")
     cursor = conn.execute(
-        "SELECT p.company_name, p.corporate_number, p.website_url"
+        "SELECT p.name, p.corporate_number, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?",

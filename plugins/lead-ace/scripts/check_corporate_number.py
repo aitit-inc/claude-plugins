@@ -173,6 +173,7 @@ def _parse_snapshot(snapshot: str) -> SearchOutput:
                     cell_match = re.match(r'- cell "(.+?)"', cline)
                     if cell_match:
                         cell_count += 1
+                        cell_full_text = cell_match.group(1)
                         # cell 内の generic が読み、text が法人名
                         k = j + 1
                         while k < len(lines):
@@ -189,6 +190,13 @@ def _parse_snapshot(snapshot: str) -> SearchOutput:
                             elif inner.startswith("- cell"):
                                 break
                             k += 1
+                        # フォールバック: 内部パースで name が取れなかった場合、
+                        # cell の引用テキストから reading を除いた部分を name にする
+                        if not name and cell_full_text:
+                            if reading and cell_full_text.startswith(reading):
+                                name = cell_full_text[len(reading):].strip()
+                            if not name:
+                                name = cell_full_text
                 # 2つ目の cell: 所在地
                 elif cell_count == 1:
                     cell_match = re.match(r'- cell "(.+?)"', cline)

@@ -5,10 +5,10 @@ Usage:
   merge_prospects.py <candidates_file> <contacts_file>
 
 Phase 1（候補収集）の出力と Phase 2（連絡先取得）の出力を
-company_name + website_url のドメインで突き合わせてマージし、
+name + website_url のドメインで突き合わせてマージし、
 add_prospects.py に渡せる形式でstdoutに出力する。
 
-ドメインでマッチしない場合は company_name のみでフォールバックマッチする
+ドメインでマッチしない場合は name のみでフォールバックマッチする
 （連絡先側に website_url が欠損しているケースへの対策）。
 マッチしなかった候補は連絡先なし（email=null等）のまま出力する。
 
@@ -25,8 +25,8 @@ from sales_db import PROSPECT_CONTACT_FIELDS, error_exit, extract_domain, normal
 
 
 def make_key(entry: dict[str, object]) -> str:
-    """company_name（正規化済み）+ domain でマッチキーを生成する。"""
-    name = normalize_name(str(entry.get("company_name", "")))
+    """name（正規化済み）+ domain でマッチキーを生成する。"""
+    name = normalize_name(str(entry.get("name", "")))
     raw_url = entry.get("website_url")
     url = str(raw_url) if isinstance(raw_url, str) else ""
     domain = extract_domain(url) if url else ""
@@ -34,8 +34,8 @@ def make_key(entry: dict[str, object]) -> str:
 
 
 def name_only_key(entry: dict[str, object]) -> str:
-    """company_name（正規化済み）のみのフォールバックキーを生成する。"""
-    return normalize_name(str(entry.get("company_name", "")))
+    """name（正規化済み）のみのフォールバックキーを生成する。"""
+    return normalize_name(str(entry.get("name", "")))
 
 
 # 連絡先フィールド（sales_db.py の Prospect TypedDict から導出）
@@ -90,7 +90,7 @@ def main() -> None:
         contact: dict[str, object] | None = contacts_index.get(key)
         fallback = False
         if contact is None:
-            # フォールバック: company_name のみでマッチ（website_url 欠損対策）
+            # フォールバック: name のみでマッチ（website_url 欠損対策）
             nk = name_only_key(candidate)
             contact = contacts_name_index.get(nk) if nk else None
             if contact is not None:
@@ -106,7 +106,7 @@ def main() -> None:
         else:
             for field in CONTACT_FIELDS:
                 result.setdefault(field, None)
-            unmatched_names.append(str(candidate.get("company_name", "?")))
+            unmatched_names.append(str(candidate.get("name", "?")))
 
         merged.append(result)
 

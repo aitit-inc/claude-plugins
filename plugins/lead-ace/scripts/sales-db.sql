@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS organizations (
 -- 営業先（法人内の具体的なアプローチ先）
 CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    company_name TEXT NOT NULL,  -- 表示用（organizations.name と同じ場合が多い）
+    name TEXT NOT NULL,  -- 営業先名（法人名・学校名・部署名等。小さい会社は organizations.name と同じ）
     contact_name TEXT,  -- 担当者名
     corporate_number TEXT REFERENCES organizations(corporate_number),  -- 法人番号FK（レガシーデータはNULL）
     department TEXT,  -- 部署名・拠点名（なければNULL。学校法人の場合は学校名）

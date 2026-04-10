@@ -10,7 +10,7 @@ stdin から候補のJSON配列を受け取り、DBに登録済みの営業先�
 判定基準（高速な順）:
   1. organizations.corporate_number 一致
   2. organizations.domain 一致
-  3. prospects.company_name の正規化一致
+  3. prospects.name の正規化一致
 
 Output (stdout): フィルタ済みJSON配列
 Output (stderr): フィルタ結果のサマリー
@@ -49,9 +49,9 @@ def main() -> None:
             if row["domain"]:
                 org_domains.add(row["domain"])
 
-        # prospects から company_name を取得（フォールバック用）
+        # prospects から name を取得（フォールバック用）
         cursor = conn.execute(
-            "SELECT p.company_name, p.website_url"
+            "SELECT p.name, p.website_url"
             " FROM prospects p"
             " JOIN project_prospects pp ON p.id = pp.prospect_id"
             " WHERE pp.project_id = ?",
@@ -60,8 +60,8 @@ def main() -> None:
         existing_names: set[str] = set()
         existing_domains: set[str] = set()
         for row in cursor:
-            if row["company_name"]:
-                existing_names.add(normalize_name(str(row["company_name"])))
+            if row["name"]:
+                existing_names.add(normalize_name(str(row["name"])))
             if row["website_url"]:
                 existing_domains.add(extract_domain(str(row["website_url"])))
     finally:
@@ -74,22 +74,22 @@ def main() -> None:
         if not isinstance(candidate, dict):
             continue
 
-        raw_name = candidate.get("company_name", "")
+        raw_name = candidate.get("name", "")
         corp_num = candidate.get("corporate_number", "")
         url = candidate.get("website_url", "")
         domain = extract_domain(url) if url else ""
 
         # 1. 法人番号チェック（O(1) set lookup）
         if corp_num and corp_num in org_corp_nums:
-            duplicates.append({"company_name": raw_name, "reason": f"法人番号一致: {corp_num}"})
+            duplicates.append({"name": raw_name, "reason": f"法人番号一致: {corp_num}"})
         # 2. ドメインチェック（organizations 優先）
         elif domain and domain in org_domains:
-            duplicates.append({"company_name": raw_name, "reason": f"ドメイン一致(org): {domain}"})
+            duplicates.append({"name": raw_name, "reason": f"ドメイン一致(org): {domain}"})
         elif domain and domain in existing_domains:
-            duplicates.append({"company_name": raw_name, "reason": f"ドメイン一致: {domain}"})
+            duplicates.append({"name": raw_name, "reason": f"ドメイン一致: {domain}"})
         # 3. 名称チェック
         elif normalize_name(raw_name) in existing_names:
-            duplicates.append({"company_name": raw_name, "reason": "名称一致"})
+            duplicates.append({"name": raw_name, "reason": "名称一致"})
         else:
             new_candidates.append(candidate)
 
@@ -101,7 +101,7 @@ def main() -> None:
     )
     if duplicates:
         for d in duplicates:
-            print(f"  除外: {d['company_name']} ({d['reason']})", file=sys.stderr)
+            print(f"  除外: {d['name']} ({d['reason']})", file=sys.stderr)
 
 
 if __name__ == "__main__":
