@@ -6,15 +6,14 @@ allowed-tools:
   - Bash
   - Read
   - Write
-  - mcp__claude_ai_Gmail__gmail_search_messages
-  - mcp__claude_ai_Gmail__gmail_read_message
-  - mcp__claude_ai_Gmail__gmail_read_thread
+  - mcp__claude_ai_Gmail__search_threads
+  - mcp__claude_ai_Gmail__get_thread
   - mcp__claude_in_chrome__tabs_context_mcp
   - mcp__claude_in_chrome__tabs_create_mcp
   - mcp__claude_in_chrome__navigate
   - mcp__claude_in_chrome__read_page
   - mcp__claude_in_chrome__get_page_text
-  - mcp__claude_ai_Gmail__gmail_create_draft
+  - mcp__claude_ai_Gmail__create_draft
 ---
 
 # Check Results - 結果収集
@@ -58,23 +57,23 @@ Gmail MCPを使い、以下の検索を行う:
 
 各アプローチ済み営業先について、送信先メールアドレスの**ドメイン**で検索する（同じ組織の別の人から返信が来るケースに対応）:
 
-1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:@<domain> newer_than:4d` を検索
-2. ヒットがあれば `mcp__claude_ai_Gmail__gmail_read_message` で内容を確認
+1. `mcp__claude_ai_Gmail__search_threads` で `from:@<domain> newer_than:4d` を検索
+2. ヒットがあれば `mcp__claude_ai_Gmail__get_thread` で内容を確認
 3. 内容がアプローチに対する反応かどうかを判定する
 
 **3b. 日程調整通知の検索**
 
 SALES_STRATEGY.mdに日程調整サービスが記載されている場合、その通知元アドレスからのメールを検索する:
 
-1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:<通知元アドレス> newer_than:1d` を検索
+1. `mcp__claude_ai_Gmail__search_threads` で `from:<通知元アドレス> newer_than:1d` を検索
 2. ヒットがあれば内容を読み、通知本文に含まれる名前・メールアドレス・組織名をアプローチ済みリストと突き合わせる
 
 **3c. バウンスメールの検索**
 
 送信失敗（宛先不明、ドメイン不在等）を検出する:
 
-1. `mcp__claude_ai_Gmail__gmail_search_messages` で `from:mailer-daemon OR from:postmaster newer_than:4d` を検索
-2. ヒットがあれば `mcp__claude_ai_Gmail__gmail_read_message` で内容を確認
+1. `mcp__claude_ai_Gmail__search_threads` で `from:mailer-daemon OR from:postmaster newer_than:4d` を検索
+2. ヒットがあれば `mcp__claude_ai_Gmail__get_thread` で内容を確認
 3. バウンスしたメールアドレスをアプローチ済みリストと照合し、該当する営業先を特定する
 
 **3d. 突き合わせ（マッチング）**
@@ -88,6 +87,8 @@ SALES_STRATEGY.mdに日程調整サービスが記載されている場合、そ
 マッチの確信度が低い場合はレポートに「要確認」と記載し、ユーザーの判断に委ねる。
 
 ### 4. SNS反応の確認
+
+**前提チェック:** ステップ2の `recent-outreach` 結果に SNS チャネル（`sns_twitter` / `sns_linkedin`）のアプローチが**1件もない場合、このステップ全体をスキップ**する。
 
 SNSでDMを送った営業先について、claude-in-chromeで返信を確認する。対象プラットフォーム: **X（Twitter）** および **LinkedIn**。
 
@@ -105,7 +106,7 @@ SNSでDMを送った営業先について、claude-in-chromeで返信を確認�
 
 ### 5. データベース更新
 
-反応があった場合、`record_response.py` で返信記録・ステータス更新・送付NG設定を1コマンドでアトミックに実行する:
+反応があった場合、`record_response.py` で返信記録・ステータス更新・送付NG設定を1コマンドでアトミックに実行する。**同一 outreach_log_id + response_type の重複記録は自動スキップされる**ので、既に記録済みかどうかの事前チェック SQL は不要（スクリプトに任せてよい）:
 
 ```bash
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_response.py data.db \
@@ -148,7 +149,7 @@ python3 ${CLAUDE_PLUGIN_ROOT}/scripts/record_response.py data.db \
    - **資料請求** → 御礼 + 資料送付の旨（※資料自体の添付はドラフト後にユーザーが行う）
    - **質問・問い合わせ** → 質問への回答案 + 次のステップ提案
    - **日程調整完了通知** → 確認の御礼 + 当日の案内
-3. `mcp__claude_ai_Gmail__gmail_create_draft` でドラフトを作成する。件名は元メールへの返信形式（`Re: {元の件名}`）にする
+3. `mcp__claude_ai_Gmail__create_draft` でドラフトを作成する。件名は元メールへの返信形式（`Re: {元の件名}`）にする
 4. 作成したドラフト数を結果レポートに含める
 
 **注意:** 自動送信は行わない。ドラフト作成のみで、送信はユーザーが内容を確認してから手動で行う。ドラフトが作成できなかった場合（Gmail MCP未接続等）はスキップし、レポートで報告する。
