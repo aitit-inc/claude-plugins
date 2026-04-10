@@ -23,6 +23,7 @@ MODULES = [
     "lookup_corporate_numbers",
     "init_db",
     "license",
+    "link_organization",
     "merge_prospects",
     "preflight",
     "query_db",

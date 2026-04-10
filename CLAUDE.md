@@ -101,6 +101,10 @@ OK: 「leo.uno@surpassone.com 宛にテストメールを送信してくださ�
 
 この方針により、スキーマの全体像を知りたい場合は **`sales-db.sql` だけ読めばよい**（マイグレーションファイルを辿る必要がない）。
 
+## 一時スキル・スクリプトの削除予定
+
+- **v0.6.0 リリース時に削除**: `skills/data-migration-v050/`、`scripts/link_organization.py`、`test_imports.py` から `link_organization` の行。旧データの organizations 移行が完了したら不要になる。
+
 ## リリース前のチェック（必須）
 `cd plugins/lead-ace/scripts && npx pyright && python3 test_imports.py`
 
