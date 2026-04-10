@@ -17,7 +17,7 @@ Options:
   --email <email>
   --sns <key> <value>
   --corporate-number <number>
-  --company-name <name>
+  --name <name>
   --website-url <url>
   --contact-form-url <url>
 
@@ -236,7 +236,7 @@ def build_parser() -> argparse.ArgumentParser:
     _ = parser.add_argument("--email", help="メールアドレスで完全一致チェック")
     _ = parser.add_argument("--sns", nargs=2, metavar=("KEY", "VALUE"), help="SNS アカウントで完全一致チェック（例: --sns x @account）")
     _ = parser.add_argument("--corporate-number", help="法人番号で完全一致チェック")
-    _ = parser.add_argument("--company-name", help="名称で完全一致チェック")
+    _ = parser.add_argument("--name", help="名称で完全一致チェック")
     _ = parser.add_argument("--website-url", help="ウェブサイトのドメインで一致チェック")
     _ = parser.add_argument("--contact-form-url", help="フォームURLで完全一致チェック")
     return parser
