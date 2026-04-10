@@ -9,6 +9,12 @@ argument-hint: "[--limit N]"
 v0.5.0 で organizations テーブルを追加し、prospects に organization_id（法人番号FK）を必須化した。
 このスキルは、**旧データ（organization_id が NULL の prospects）を新スキーマに移行する**ための一時的なスキル。
 
+## 重要: スキーマの正しい理解
+
+- `prospects.organization_id` は organizations テーブルへの **FK（外部キー）であり、UNIQUE 制約はない**
+- **同じ法人番号を複数の prospect が共有できる**。これは正しい設計（例: 学校法人○○ の下に A専門学校、B専門学校がそれぞれ prospect として存在する）
+- 「既に他の prospect で使われている法人番号だから設定できない」という判断は誤り。同一法人番号を複数 prospect に設定すること
+
 ## 手順
 
 ### 0. プリフライト
