@@ -20,10 +20,9 @@ argument-hint: "<修正内容の説明>"
 
 ## DBスキーマ
 
-SQL を書く前に以下を**両方**読み、現在のスキーマを把握すること:
+SQL を書く前に以下を読み、現在のスキーマを把握すること:
 
-1. `${CLAUDE_PLUGIN_ROOT}/scripts/sales-db.sql` — 初期スキーマ（テーブル定義・FK・インデックス）
-2. `${CLAUDE_PLUGIN_ROOT}/migrations/` 内の全 `.py` ファイル — 追加カラム・インデックス・トリガー等
+- `${CLAUDE_PLUGIN_ROOT}/scripts/sales-db.sql` — 最新のフルスキーマ（テーブル定義・FK・インデックス・トリガー全て）
 
 ## 手順
 

@@ -6,7 +6,6 @@ allowed-tools:
   - Bash
   - Read
   - Write
-  - WebFetch
   # SNS DM 用（ログインセッションが必要なため claude-in-chrome を使用）
   - mcp__claude_in_chrome__tabs_context_mcp
   - mcp__claude_in_chrome__tabs_create_mcp

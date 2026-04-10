@@ -116,10 +116,12 @@ def cmd_list_reachable(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 2:
         args.append("30")
     cursor = conn.execute(
-        "SELECT p.id, p.company_name, p.contact_name, p.overview, p.email,"
-        " p.contact_form_url, p.form_type, p.sns_accounts, pp.match_reason, pp.priority"
+        "SELECT p.id, p.company_name, p.contact_name, p.department, p.overview, p.email,"
+        " p.contact_form_url, p.form_type, p.sns_accounts,"
+        " p.corporate_number, pp.match_reason, pp.priority"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
+        " LEFT JOIN organizations o ON p.corporate_number = o.corporate_number"
         " WHERE pp.project_id = ? AND pp.status = 'new'"
         " AND p.do_not_contact = 0"
         " AND ("
@@ -205,7 +207,7 @@ def cmd_existing_list(conn: sqlite3.Connection, args: list[str]) -> None:
     if len(args) < 1:
         error_exit("Usage: existing-list <project_id>")
     cursor = conn.execute(
-        "SELECT p.company_name, p.industry, p.website_url"
+        "SELECT p.company_name, p.department, p.corporate_number, p.industry, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?"
@@ -216,11 +218,11 @@ def cmd_existing_list(conn: sqlite3.Connection, args: list[str]) -> None:
 
 
 def cmd_all_prospect_identifiers(conn: sqlite3.Connection, args: list[str]) -> None:
-    """全登録済み営業先の名前・URL一覧（重複回避用）"""
+    """全登録済み営業先の名前・URL・法人番号一覧（重複回避用）"""
     if len(args) < 1:
         error_exit("Usage: all-prospect-identifiers <project_id>")
     cursor = conn.execute(
-        "SELECT p.company_name, p.website_url"
+        "SELECT p.company_name, p.corporate_number, p.website_url"
         " FROM prospects p"
         " JOIN project_prospects pp ON p.id = pp.prospect_id"
         " WHERE pp.project_id = ?",

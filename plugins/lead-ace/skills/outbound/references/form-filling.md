@@ -138,11 +138,19 @@ Google Forms はブラウザ UI 操作ではなく、`formResponse` エンドポ
 
 **送信手順:**
 
-1. **フォームページの HTML を WebFetch で取得する**
+1. **フォームページの生 HTML を取得し、フォーム ID と entry ID を抽出する**
 
-2. **フォーム ID と entry ID を抽出する**
+   `--raw` フラグで生 HTML を取得する（Jina Reader 経由だとフォームデータが除去されるため）:
+
+   ```bash
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py \
+     --url "https://docs.google.com/forms/d/{FORM_ID}/viewform" \
+     --prompt "このGoogle Formsのentry IDを全て抽出してください。FB_PUBLIC_LOAD_DATA_ 内のフィールド定義から、各フィールドのラベルとentry.XXXXXXX形式のIDを対応付けて返してください。選択式になっている項目については選択肢一覧と選択するためのIDもつけてください。" \
+     --raw --timeout 20
+   ```
+
    - フォーム ID: URL の `/forms/d/{FORM_ID}/` 部分から取得
-   - entry ID: ページソース内の `FB_PUBLIC_LOAD_DATA_` に含まれるフィールド定義から抽出。各フィールドは `entry.XXXXXXX` 形式の ID を持つ
+   - entry ID: `--raw` により生 HTML が Haiku に渡され、`FB_PUBLIC_LOAD_DATA_` からフィールドラベルと entry ID の対応を抽出
 
 3. **formResponse エンドポイントに POST する**
 

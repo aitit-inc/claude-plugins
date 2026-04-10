@@ -42,7 +42,7 @@ from check_duplicate import (  # pyright: ignore[reportMissingModuleSource]
     check_sns,
     check_website_domain,
 )
-from sales_db import DuplicateMatch, error_exit, get_connection, print_json  # pyright: ignore[reportMissingModuleSource]
+from sales_db import DuplicateMatch, error_exit, get_connection, print_json, upsert_organization  # pyright: ignore[reportMissingModuleSource]
 
 
 # ---------------------------------------------------------------------------
@@ -55,6 +55,7 @@ class ProspectEntry(TypedDict, total=False):
     company_name: str
     contact_name: str
     corporate_number: str
+    department: str
     overview: str
     industry: str
     website_url: str
@@ -171,7 +172,10 @@ def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[Dupl
 
 
 def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
-    """prospects テーブルに1件挿入し、新しいIDを返す。"""
+    """prospects テーブルに1件挿入し、新しいIDを返す。
+
+    corporate_number がある場合は organizations テーブルにも upsert する。
+    """
     sns_val = entry.get("sns_accounts")
     sns_str: str | None = None
     if isinstance(sns_val, dict):
@@ -182,22 +186,37 @@ def insert_prospect(conn: sqlite3.Connection, entry: ProspectEntry) -> int:
     do_not_contact = 1 if entry.get("do_not_contact") else 0
     notes = entry.get("notes")
 
+    # organizations に upsert（corporate_number がある場合）
+    corp_num = entry.get("corporate_number")
+    company_name = entry.get("company_name")
+    website_url = entry.get("website_url")
+    if corp_num and company_name and website_url:
+        upsert_organization(
+            conn,
+            corporate_number=corp_num,
+            name=company_name,
+            website_url=website_url,
+            industry=entry.get("industry"),
+            overview=entry.get("overview"),
+        )
+
     sql = (
         "INSERT INTO prospects"
-        + " (company_name, contact_name, corporate_number, overview, industry,"
-        + " website_url, email, contact_form_url, form_type, sns_accounts,"
-        + " do_not_contact, notes)"
-        + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+        " (company_name, contact_name, corporate_number, department, overview, industry,"
+        " website_url, email, contact_form_url, form_type, sns_accounts,"
+        " do_not_contact, notes)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
     )
     cursor = conn.execute(
         sql,
         (
-            entry.get("company_name"),
+            company_name,
             entry.get("contact_name"),
-            entry.get("corporate_number"),
+            corp_num,
+            entry.get("department"),
             entry.get("overview"),
             entry.get("industry"),
-            entry.get("website_url"),
+            website_url,
             entry.get("email"),
             entry.get("contact_form_url"),
             entry.get("form_type"),

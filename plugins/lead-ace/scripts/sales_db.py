@@ -38,10 +38,25 @@ class Project(TypedDict):
     updated_at: str
 
 
+class Organization(TypedDict, total=False):
+    corporate_number: str  # PRIMARY KEY（法人番号13桁）
+    name: str
+    normalized_name: str
+    domain: str | None
+    website_url: str
+    industry: str | None
+    overview: str | None
+    address: str | None  # 国税庁法人番号公表サイトの所在地
+    created_at: str
+    updated_at: str
+
+
 class Prospect(TypedDict, total=False):
     id: int
     company_name: str
-    corporate_number: str | None
+    contact_name: str | None
+    corporate_number: str | None  # FK → organizations（レガシーデータは NULL）
+    department: str | None  # 部署名・拠点名（学校法人の場合は学校名）
     overview: str
     industry: str | None
     website_url: str
@@ -114,12 +129,13 @@ _PROSPECT_AUTO_FIELDS = frozenset({"id", "created_at", "updated_at"})
 
 # Phase 1（候補収集）で取得するフィールド
 PROSPECT_CANDIDATE_FIELDS: tuple[str, ...] = (
-    "company_name", "corporate_number", "overview", "industry", "website_url",
+    "company_name", "corporate_number", "department", "overview", "industry", "website_url",
 )
 
 # Phase 2（連絡先取得）で取得するフィールド
 PROSPECT_CONTACT_FIELDS: tuple[str, ...] = (
-    "email", "contact_form_url", "form_type", "sns_accounts", "do_not_contact", "notes",
+    "contact_name", "email", "contact_form_url", "form_type", "sns_accounts",
+    "do_not_contact", "notes",
 )
 
 # 完全性チェック: 全 Prospect フィールドがいずれかのグループに属すること
@@ -196,3 +212,36 @@ def extract_domain(url: str) -> str:
     domain = re.sub(r"^www\.", "", domain, flags=re.IGNORECASE)
     domain = domain.split("/")[0]
     return domain.lower()
+
+
+# ---------------------------------------------------------------------------
+# Organization 操作
+# ---------------------------------------------------------------------------
+
+def upsert_organization(
+    conn: sqlite3.Connection,
+    corporate_number: str,
+    name: str,
+    website_url: str,
+    industry: str | None = None,
+    overview: str | None = None,
+    address: str | None = None,
+) -> None:
+    """organizations テーブルに INSERT or UPDATE する。"""
+    domain = extract_domain(website_url) if website_url else None
+    normalized = normalize_name(name)
+    conn.execute(
+        "INSERT INTO organizations"
+        " (corporate_number, name, normalized_name, domain, website_url, industry, overview, address)"
+        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        " ON CONFLICT(corporate_number) DO UPDATE SET"
+        "   name = excluded.name,"
+        "   normalized_name = excluded.normalized_name,"
+        "   domain = excluded.domain,"
+        "   website_url = excluded.website_url,"
+        "   industry = COALESCE(excluded.industry, organizations.industry),"
+        "   overview = COALESCE(excluded.overview, organizations.overview),"
+        "   address = COALESCE(excluded.address, organizations.address),"
+        "   updated_at = datetime('now', 'localtime')",
+        (corporate_number, name, normalized, domain, website_url, industry, overview, address),
+    )

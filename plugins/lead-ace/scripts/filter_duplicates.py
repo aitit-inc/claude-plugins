@@ -7,9 +7,10 @@ Usage:
 stdin から候補のJSON配列を受け取り、DBに登録済みの営業先を除外して
 新規候補のみをstdoutに出力する。
 
-判定基準:
-  - company_name の完全一致
-  - website_url のドメイン一致
+判定基準（高速な順）:
+  1. organizations.corporate_number 一致
+  2. organizations.domain 一致
+  3. prospects.company_name の正規化一致
 
 Output (stdout): フィルタ済みJSON配列
 Output (stderr): フィルタ結果のサマリー
@@ -20,7 +21,7 @@ from __future__ import annotations
 import json
 import sys
 
-from sales_db import error_exit, extract_domain, get_connection, normalize_name, print_json, rows_to_dicts  # pyright: ignore[reportMissingModuleSource]
+from sales_db import error_exit, extract_domain, get_connection, normalize_name, print_json  # pyright: ignore[reportMissingModuleSource]
 
 
 def main() -> None:
@@ -40,6 +41,15 @@ def main() -> None:
 
     conn = get_connection(db_path)
     try:
+        # organizations から corporate_number と domain を取得（高速チェック用）
+        org_corp_nums: set[str] = set()
+        org_domains: set[str] = set()
+        for row in conn.execute("SELECT corporate_number, domain FROM organizations"):
+            org_corp_nums.add(row["corporate_number"])
+            if row["domain"]:
+                org_domains.add(row["domain"])
+
+        # prospects から company_name を取得（フォールバック用）
         cursor = conn.execute(
             "SELECT p.company_name, p.website_url"
             " FROM prospects p"
@@ -47,18 +57,15 @@ def main() -> None:
             " WHERE pp.project_id = ?",
             (project_id,),
         )
-        existing = rows_to_dicts(cursor.fetchall())
+        existing_names: set[str] = set()
+        existing_domains: set[str] = set()
+        for row in cursor:
+            if row["company_name"]:
+                existing_names.add(normalize_name(str(row["company_name"])))
+            if row["website_url"]:
+                existing_domains.add(extract_domain(str(row["website_url"])))
     finally:
         conn.close()
-
-    existing_names: set[str] = {
-        normalize_name(str(row["company_name"])) for row in existing if row.get("company_name")
-    }
-    existing_domains: set[str] = {
-        extract_domain(str(row["website_url"]))
-        for row in existing
-        if row.get("website_url")
-    }
 
     new_candidates: list[object] = []
     duplicates: list[dict[str, str]] = []
@@ -68,13 +75,21 @@ def main() -> None:
             continue
 
         raw_name = candidate.get("company_name", "")
+        corp_num = candidate.get("corporate_number", "")
         url = candidate.get("website_url", "")
         domain = extract_domain(url) if url else ""
 
-        if normalize_name(raw_name) in existing_names:
-            duplicates.append({"company_name": raw_name, "reason": "名称一致"})
+        # 1. 法人番号チェック（O(1) set lookup）
+        if corp_num and corp_num in org_corp_nums:
+            duplicates.append({"company_name": raw_name, "reason": f"法人番号一致: {corp_num}"})
+        # 2. ドメインチェック（organizations 優先）
+        elif domain and domain in org_domains:
+            duplicates.append({"company_name": raw_name, "reason": f"ドメイン一致(org): {domain}"})
         elif domain and domain in existing_domains:
             duplicates.append({"company_name": raw_name, "reason": f"ドメイン一致: {domain}"})
+        # 3. 名称チェック
+        elif normalize_name(raw_name) in existing_names:
+            duplicates.append({"company_name": raw_name, "reason": "名称一致"})
         else:
             new_candidates.append(candidate)
 

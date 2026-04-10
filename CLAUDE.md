@@ -48,7 +48,9 @@ plugins/<plugin-name>/
 - 各プラグインは独立して動作すること（プラグイン間の依存禁止）
 - パス参照は `${CLAUDE_PLUGIN_ROOT}` を使い、ハードコードしない
 - 言語: 日本語（コード内コメント・ドキュメント共に）
+- スクリプトは全て Python で書く（shell script / JS 禁止）
 - Python スクリプトの CLI インターフェースは `argparse` で統一する（`sys.argv` 直接参照は使わない）
+- Web ページ取得は `fetch_url.py` を使う（WebFetch はフリーズ問題・SPA 非対応のため禁止）。生 HTML が必要な場合は `--raw` フラグ
 - Python スクリプトでは型定義をしっかりすること。anyは禁止。なるべく型キャストは避け、正しく型推論できるようにすること
 - Python スクリプトを変更したら、コミット前に `cd plugins/lead-ace/scripts && npx pyright && python3 test_imports.py` を実行して型チェックとインポートテスト（モジュールレベル assertion）を通すこと
 
@@ -89,6 +91,15 @@ OK: 「leo.uno@surpassone.com 宛にテストメールを送信してくださ�
 - 各ファイルに `def up(conn: sqlite3.Connection) -> None:` を実装。冪等に書くこと（`IF NOT EXISTS` 等）
 - `preflight.py` が全スキル実行前に未適用マイグレーションを自動適用（`applied_migrations` テーブルで追跡）
 - 全スキルのステップ0で `preflight.py` を呼び出す（登録チェック + マイグレーション）
+
+### sales-db.sql とマイグレーションの関係
+
+**`sales-db.sql` は常に「最新のフルスキーマ」を表す。** マイグレーションで変更を追加したら、同じ変更を `sales-db.sql` にも反映すること。
+
+- **新規ユーザー**: `init_db.py` → `sales-db.sql` で完全なスキーマが作られる → マイグレーションは冪等なので全て no-op
+- **既存ユーザー**: `preflight.py` → 未適用マイグレーションが差分適用される
+
+この方針により、スキーマの全体像を知りたい場合は **`sales-db.sql` だけ読めばよい**（マイグレーションファイルを辿る必要がない）。
 
 ## リリース前のチェック（必須）
 `cd plugins/lead-ace/scripts && npx pyright && python3 test_imports.py`

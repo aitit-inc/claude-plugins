@@ -7,7 +7,6 @@ allowed-tools:
   - Read
   - Write
   - WebSearch
-  - WebFetch
 ---
 
 # Evaluate - PDCA評価＆改善

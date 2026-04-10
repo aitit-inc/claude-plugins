@@ -15,9 +15,12 @@ import sys
 MODULES = [
     "sales_db",
     "add_prospects",
+    "check_corporate_number",
     "check_duplicate",
     "delete_project",
+    "fetch_url",
     "filter_duplicates",
+    "lookup_corporate_numbers",
     "init_db",
     "license",
     "merge_prospects",

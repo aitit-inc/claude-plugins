@@ -8,7 +8,6 @@ allowed-tools:
   - Write
   - Agent
   - WebSearch
-  - WebFetch
 ---
 
 # Build List - 営業先リスト作成
@@ -80,20 +79,43 @@ SALES_STRATEGY.mdの「検索キーワード」「ターゲット」セクショ
 
 ### 4. Web探索の実行
 
-WebSearchとWebFetchを組み合わせて、営業先候補を幅広く収集する。
+WebSearch と `fetch_url.py`（Jina Reader + Claude Haiku）を組み合わせて、営業先候補を幅広く収集する。
+
+**ページ取得には `fetch_url.py` を使う（WebFetch は使わない）:**
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "https://example.com" --prompt "企業一覧を抽出" --timeout 15
+```
+タイムアウト制御があるため、応答しないサイトでもフリーズしない。SPA サイトにも対応。
 
 このフェーズでは**候補の発見**に集中する。各候補の連絡先（メール・フォーム等）の取得は Phase 2 で行うので、ここでは以下の情報だけ集める:
 
 **必須（これがないと候補にしない）:**
 - 名称（企業名、学校名、法人名等）
+- 法人番号（13桁）— 後述の法人番号検索で取得する
 - 事業概要（何をしている組織か。公式サイトから1-2文で要約）
 - 公式サイトURL
 
 **取得できれば:**
 - 業種・分野
+- 部署名・拠点名（学校法人なら学校名、大企業なら営業対象部署）
 - 検索中にたまたま見つかったメールアドレスやSNS（わざわざ探さなくてよい）
 
 公式サイトURLと事業概要が取得できない営業先はスキップする。
+
+**法人番号の検索（候補ごとに必ず実施）:**
+
+candidates を収集した後、法人番号が未取得の候補については以下で取得する:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_corporate_number.py "{会社名}"
+```
+
+stdout に JSON が出力される。`results` 配列の `number` が法人番号（13桁）。
+- 1件ヒット → その法人番号を採用
+- 複数ヒット → 住所や公式サイト情報と照合して正しい候補を特定する。確信が持てない場合は WebSearch + fetch_url.py で確認
+- 0件 → 法人格を除去した名前や読み仮名（`--kana`）で再検索を試みる
+
+法人番号が見つからない候補はリストに含めない（organizations テーブルは法人番号が PK のため登録不可）。
 
 **探索のコツ:**
 - 1つの検索クエリで見つかる営業先は限られるので、多角的にクエリを変えて探索する
@@ -135,14 +157,15 @@ WebSearchとWebFetchを組み合わせて、営業先候補を幅広く収集す
 Phase 1 で収集した候補を **5件ずつのバッチ** に分割し、バッチごとにサブエージェントを起動して連絡先情報を取得する。
 
 各サブエージェントのプロンプトに以下を含める:
-- 担当する候補のリスト（company_name, website_url, overview, industry, match_reason, priority）
+- 担当する候補のリスト（company_name, corporate_number, website_url, overview, industry, department, match_reason, priority）
 - `${CLAUDE_PLUGIN_ROOT}/skills/build-list/references/enrich-contacts.md` を読み込んで、その手順に従うこと
-- 各候補の公式サイトを探索し、メールアドレス・フォームURL・SNSアカウントを取得すること
+- 各候補の公式サイトを探索し、メールアドレス・フォームURLを取得すること
+- ページ取得には `python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url <URL> --prompt <指示>` を使うこと（WebFetch は使わない）
 - 完了後、取得結果をJSON配列で返すこと
 
-サブエージェントの allowed-tools: `WebFetch`, `WebSearch`, `Read`
+サブエージェントの allowed-tools: `Bash`, `WebSearch`, `Read`
 
-サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（company_name, overview, website_url, industry, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
+サブエージェントが返すJSON配列の各オブジェクトには、Phase 1 の情報（company_name, corporate_number, overview, website_url, industry, department, match_reason, priority）に加えて、取得した連絡先（email, contact_form_url, sns_accounts）が含まれる。
 
 ### 6b. 連絡先なし候補の再探索（該当がある場合のみ）
 
@@ -180,6 +203,8 @@ cat <<'EOF' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/add_prospects.py data.db "$0
 [
   {
     "company_name": "営業先名",
+    "corporate_number": "1234567890123",
+    "department": null,
     "overview": "事業概要（1-2文）",
     "website_url": "https://example.com",
     "industry": "業種",
@@ -194,12 +219,14 @@ EOF
 ```
 
 **各フィールド:**
-- 必須: `company_name`, `overview`, `website_url`, `match_reason`
-- 省略可: `industry`, `email`, `contact_form_url`, `corporate_number`, `sns_accounts`
+- 必須: `company_name`, `corporate_number`, `overview`, `website_url`, `match_reason`
+- 省略可: `department`, `industry`, `email`, `contact_form_url`, `sns_accounts`
 - `priority`: 省略時デフォルト3
 
 **スクリプトの動作:**
-- 各エントリについて自動で重複チェックを行う（email→SNS→法人番号→名称→ドメインの順）
+- 各エントリについて自動で重複チェックを行う（法人番号→email→フォームURL→SNS→名称→ドメインの順）
+- corporate_number がある場合、organizations テーブルに自動 upsert される
+- email / contact_form_url はグローバル UNIQUE 制約で二重送信を防止
 - `EXACT_MATCH`: 既存prospect_idを使い、project_prospectsへの紐付けのみ行う
 - `POSSIBLE_MATCH`（ドメイン一致等）: 新規登録するが、出力に `possible_matches` として報告する
 - マッチなし: 新規登録する

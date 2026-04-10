@@ -6,11 +6,27 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 
+-- 法人マスタ（法人番号が主キー）
+CREATE TABLE IF NOT EXISTS organizations (
+    corporate_number TEXT PRIMARY KEY,  -- 法人番号（13桁）
+    name TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,  -- 正規化済み（NFKC+小文字+trim）
+    domain TEXT,  -- website_url からプロトコル・www・パスを除去
+    website_url TEXT NOT NULL,
+    industry TEXT,
+    overview TEXT,
+    address TEXT,  -- 国税庁法人番号公表サイトの所在地
+    created_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+
+-- 営業先（法人内の具体的なアプローチ先）
 CREATE TABLE IF NOT EXISTS prospects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    company_name TEXT NOT NULL,
-    contact_name TEXT,  -- 担当者名。取得できた場合のみ
-    corporate_number TEXT UNIQUE,  -- 法人番号（13桁）。わかる場合のみ
+    company_name TEXT NOT NULL,  -- 表示用（organizations.name と同じ場合が多い）
+    contact_name TEXT,  -- 担当者名
+    corporate_number TEXT REFERENCES organizations(corporate_number),  -- 法人番号FK（レガシーデータはNULL）
+    department TEXT,  -- 部署名・拠点名（なければNULL。学校法人の場合は学校名）
     overview TEXT NOT NULL,
     industry TEXT,
     website_url TEXT NOT NULL,
@@ -73,11 +89,35 @@ CREATE TABLE IF NOT EXISTS evaluations (
     FOREIGN KEY (project_id) REFERENCES projects(id)
 );
 
--- Indexes
+-- Indexes: organizations
+CREATE INDEX IF NOT EXISTS idx_org_domain ON organizations(domain);
+CREATE INDEX IF NOT EXISTS idx_org_normalized_name ON organizations(normalized_name);
+
+-- Indexes: prospects（二重送信防止の UNIQUE 制約）
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prospect_unique_email ON prospects(email) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_prospect_unique_form ON prospects(contact_form_url) WHERE contact_form_url IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_prospect_org ON prospects(corporate_number);
+
+-- Indexes: project_prospects
 CREATE INDEX IF NOT EXISTS idx_project_prospects_project ON project_prospects(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_prospects_prospect ON project_prospects(prospect_id);
 CREATE INDEX IF NOT EXISTS idx_project_prospects_status ON project_prospects(status);
 CREATE INDEX IF NOT EXISTS idx_outreach_project ON outreach_logs(project_id);
 CREATE INDEX IF NOT EXISTS idx_outreach_prospect ON outreach_logs(prospect_id);
+CREATE INDEX IF NOT EXISTS idx_outreach_dedup ON outreach_logs(project_id, prospect_id, status);
 CREATE INDEX IF NOT EXISTS idx_responses_outreach ON responses(outreach_log_id);
 CREATE INDEX IF NOT EXISTS idx_evaluations_project ON evaluations(project_id);
+
+-- Trigger: contacted ステータスには outreach_logs の sent レコードが必要
+CREATE TRIGGER IF NOT EXISTS enforce_contacted_has_log
+BEFORE UPDATE ON project_prospects
+WHEN NEW.status = 'contacted' AND OLD.status != 'contacted'
+BEGIN
+    SELECT RAISE(ABORT, 'contacted にするには outreach_logs に sent レコードが必要です。send_and_log.py を経由してください')
+    WHERE NOT EXISTS (
+        SELECT 1 FROM outreach_logs
+        WHERE project_id = NEW.project_id
+          AND prospect_id = NEW.prospect_id
+          AND status = 'sent'
+    );
+END;

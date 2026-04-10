@@ -7,7 +7,6 @@ allowed-tools:
   - Read
   - Write
   - WebSearch
-  - WebFetch
   - AskUserQuestion
 ---
 
@@ -156,7 +155,10 @@ AskUserQuestionを使い、以下の情報を**1ステップずつ順番に**対
 質問: サービスの特徴、セールスポイント、競合と比べた差別化ポイント
 - 前ステップまでの情報をもとに想定される競合を例示する
   - 例:「この分野だと〇〇や△△が競合として考えられますが、御社の強みは何ですか？」
-- WebSearchで主要な競合を軽く調べて例示してもよい
+- WebSearchで主要な競合を軽く調べて例示してもよい。検索結果のページ内容を確認する場合は `fetch_url.py` を使う:
+  ```bash
+  python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "<URL>" --prompt "この企業のサービス内容と特徴を抽出" --timeout 15
+  ```
 - 「おまかせ」の場合: Web調査結果と事業内容から差別化ポイントを推論して提案
 
 #### ステップ 4-4: 実績・社会的証明
@@ -196,7 +198,11 @@ AskUserQuestionを使い、以下の情報を**1ステップずつ順番に**対
 
 ### 5. Web調査（補足）
 
-ユーザーから得た情報を補完するため、必要に応じてWebSearchで市場・競合情報を調査する。
+ユーザーから得た情報を補完するため、必要に応じてWebSearchで市場・競合情報を調査する。検索結果のページ内容を確認する場合は `fetch_url.py` を使う:
+
+```bash
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "<URL>" --prompt "<抽出したい情報>" --timeout 15
+```
 
 ### 6. BUSINESS.md 生成/更新
 
