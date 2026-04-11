@@ -45,10 +45,14 @@ def up(conn: sqlite3.Connection) -> None:
     )
 
     # 2. 既存 prospects から organizations にデータ移行
+    # 007/008 適用済みなら name/organization_id、未適用なら company_name/corporate_number
+    cols = {col[1] for col in conn.execute("PRAGMA table_info(prospects)").fetchall()}
+    name_col = "name" if "name" in cols else "company_name"
+    org_col = "organization_id" if "organization_id" in cols else "corporate_number"
     cursor = conn.execute(
-        "SELECT corporate_number, company_name, website_url, industry, overview,"
-        " created_at, updated_at"
-        " FROM prospects WHERE corporate_number IS NOT NULL"
+        f"SELECT {org_col}, {name_col}, website_url, industry, overview,"
+        f" created_at, updated_at"
+        f" FROM prospects WHERE {org_col} IS NOT NULL"
     )
     for row in cursor.fetchall():
         corp_num: str = row[0]
