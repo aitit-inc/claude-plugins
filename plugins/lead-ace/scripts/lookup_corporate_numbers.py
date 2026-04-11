@@ -34,6 +34,7 @@ from sales_db import get_connection, print_json  # pyright: ignore[reportMissing
 class LookupDetail(TypedDict, total=False):
     prospect_id: int
     name: str
+    website_url: str
     status: str  # "candidates_found" | "not_found" | "error"
     candidates: list[SearchResult]
     message: str
@@ -139,6 +140,7 @@ def main() -> None:
         detail = LookupDetail(
             prospect_id=prospect_id,
             name=name,
+            website_url=row["website_url"],
         )
 
         try:

@@ -9,6 +9,8 @@ argument-hint: "[--limit N]"
 v0.5.0 で organizations テーブルを追加し、prospects に organization_id（法人番号FK）を必須化した。
 このスキルは、**旧データ（organization_id が NULL の prospects）を新スキーマに移行する**ための一時的なスキル。
 
+大量レコード処理のため、サブエージェントによるバッチ並列照合を行う。
+
 ## 手順
 
 ### 0. プリフライト
@@ -17,81 +19,121 @@ v0.5.0 で organizations テーブルを追加し、prospects に organization_i
 python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db --migrate-only
 ```
 
-### 1. 未移行データの検索
+### 1. 候補検索
 
-`lookup_corporate_numbers.py` で organization_id が NULL の prospects を検索し、国税庁法人番号公表サイトから法人番号の候補を取得する。
-
-```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lookup_corporate_numbers.py data.db --limit 5
-```
-
-`--limit` はユーザーの引数で指定があればそれを使う。省略時は 5。
-
-出力の `details` 配列に各 prospect の候補が入る。以降、1件ずつ確認していく。
-
-### 2. 法人番号の照合・確定
-
-候補の正確性を **必ず** 以下の手順で照合する。`lookup_corporate_numbers.py` の候補をそのまま信用してはならない。
-
-#### 照合の原則
-
-- **業種の整合性**: 営業先が学校なのに株式会社がヒットしていたらそれは別法人
-- **所在地の整合性**: 全く異なる都道府県なら要注意
-- **名称の整合性**: 類似名の別法人に注意（例: 「○○工業」と「○○工業株式会社」は別法人の可能性）
-
-#### 照合手順
-
-候補が見つかった prospect ごとに:
-
-1. **prospect の情報を確認**: website_url からその営業先が何者かを把握する
+法人番号候補を検索し、結果をファイルに保存する（メインコンテキスト圧迫を防止）:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "<prospect の website_url>" --prompt "この法人の正式名称、業種、所在地を抽出して"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/lookup_corporate_numbers.py data.db --limit <N> > /tmp/la_lookup.json 2>/dev/null
 ```
 
-2. **候補の法人番号を検証**: 候補が1件でも、0件でも、複数件でも必ず実施
+`--limit` はユーザー引数があればそれを使う。省略時は 5。
+
+件数サマリーだけ取得してユーザーに報告する（JSON 全体を出力しない）:
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/check_corporate_number.py "<法人名>"
+python3 -c "import json; d=json.load(open('/tmp/la_lookup.json')); print(f'searched={d[\"searched\"]}, found={d[\"candidates_found\"]}, not_found={d[\"not_found\"]}, errors={d[\"errors\"]}')"
 ```
 
-必要に応じて WebSearch で追加調査する。
+### 2. バッチ分割
 
-3. **判定**:
-   - **確定**: 法人名・業種・所在地が全て整合 → ステップ3へ
-   - **不明**: 情報不足で判断できない → スキップし、ユーザーに報告
-   - **該当なし**: 候補が全て無関係 → スキップし、ユーザーに報告
-
-### 3. DB更新
-
-確定した法人番号を `link_organization.py` で一括更新する。
+candidates_found のエントリを **20件ずつ** のバッチファイルに分割する:
 
 ```bash
-echo '<json_array>' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/link_organization.py data.db
+python3 -c "
+import json, math
+data = json.load(open('/tmp/la_lookup.json'))
+found = [d for d in data['details'] if d['status'] == 'candidates_found']
+bs = 20
+for i in range(0, len(found), bs):
+    with open(f'/tmp/la_batch_{i//bs}.json', 'w') as f:
+        json.dump(found[i:i+bs], f, ensure_ascii=False)
+print(f'{len(found)} prospects -> {math.ceil(len(found)/bs)} batches')
+"
 ```
 
-JSON配列の各オブジェクト:
+### 3. バッチ照合（サブエージェントで並列実行）
 
-```json
+各バッチファイルに対して **Agent tool** でサブエージェントを起動する。
+**独立したバッチは1つのメッセージ内で複数の Agent tool call を発行し、並列実行すること。**
+
+各サブエージェントのプロンプトとして、以下のテンプレートの `<BATCH_FILE>` を実際のパスに置き換えて渡す:
+
+---
+
+**↓ サブエージェントプロンプトテンプレート ↓**
+
+```
+法人番号の照合バッチを処理してください。
+
+## 入力
+Read tool で <BATCH_FILE> を読み、JSON 配列を取得する。
+各エントリは {prospect_id, name, website_url, candidates: [{number, name, reading, address}]} の形式。
+
+## 照合ルール
+
+### 自動確定（Web調査不要）
+候補が1件のみで、以下を**全て**満たす場合はそのまま確定してよい:
+- 候補の法人名と prospect の name が実質同一（全角半角・法人種別の位置違いは許容）
+- 法人種別が prospect の業種と矛盾しない（例: 営業先が学校なのに候補が株式会社→矛盾）
+
+### 要調査
+自動確定できない場合、以下で調査する:
+1. fetch_url.py で prospect の website を確認:
+   python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "<website_url>" --prompt "この法人の正式名称、業種、所在地を抽出して"
+2. 必要に応じて WebSearch で追加調査
+
+### 判定
+- **確定**: 法人名・業種が整合 → confirmed に追加
+- **スキップ**: 判断できない or 候補が無関係 → skipped に追加
+
+## 出力
+処理完了後、以下の JSON 構造を**テキストとして**返すこと:
+
 {
-  "prospect_id": 42,
-  "corporate_number": "1234567890123",
-  "organization_name": "正式法人名（国税庁公表サイトの名称）",
-  "address": "東京都新宿区...",
-  "name": "営業先名（変更が必要な場合のみ）",
-  "department": "部署名（追加が必要な場合のみ）"
+  "confirmed": [
+    {
+      "prospect_id": 42,
+      "corporate_number": "1234567890123",
+      "organization_name": "候補の name をそのまま使用",
+      "address": "候補の address をそのまま使用"
+    }
+  ],
+  "skipped": [
+    {"prospect_id": 99, "name": "○○", "reason": "理由"}
+  ]
 }
+
+### フィールド補足
+- organization_name: 候補の name（国税庁公表サイトの名称）をそのまま使う
+- name（省略可）: prospects.name を変更する場合のみ追加。例: organization_name="学校法人○○" で prospect が個別学校の場合 name="○○専門学校"
+- department（省略可）: 部署を設定する場合のみ追加
+
+### 注意
+- fetch_url.py は Jina Reader（20 RPM 制限）を使用する。大量にフェッチする場合はエラーハンドリングすること
+- 自動確定できるものを先に処理し、要調査を後にまとめることで効率化する
 ```
 
-- `prospect_id`, `corporate_number`, `organization_name` は必須
-- `address` は check_corporate_number.py の結果から取得できれば含める
-- `name` は現在の prospects.name を変更する必要がある場合のみ指定（例: 学校法人の場合、prospects.name を学校名に、organization_name を学校法人名にする）
-- `department` は部署を追加する場合のみ指定
+**↑ サブエージェントプロンプトテンプレート ↑**
 
-### 4. 結果報告
+---
 
-処理結果をユーザーに報告する:
+### 4. 結果集約・DB更新
+
+全サブエージェントの `confirmed` 配列を結合し、`link_organization.py` で一括更新する:
+
+```bash
+echo '<merged_json>' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/link_organization.py data.db
+```
+
+### 5. 結果報告
+
+ユーザーに報告する:
 
 - 確定・更新した件数
-- スキップした件数とその理由
-- 残りの未移行件数（`SELECT COUNT(*) FROM prospects WHERE organization_id IS NULL`）
+- スキップした件数と主な理由
+- 残りの未移行件数:
+
+```bash
+python3 -c "import sqlite3; c=sqlite3.connect('data.db'); print(c.execute('SELECT COUNT(*) FROM prospects WHERE organization_id IS NULL').fetchone()[0])"
+```
