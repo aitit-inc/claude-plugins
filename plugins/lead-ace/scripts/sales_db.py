@@ -65,6 +65,7 @@ class Prospect(TypedDict, total=False):
     form_type: FormType | None
     sns_accounts: str | None  # JSON string
     do_not_contact: int
+    org_lookup_status: str | None  # NULL=未検索, not_applicable, unresolvable
     notes: str | None
     created_at: str
     updated_at: str
@@ -130,6 +131,7 @@ _PROSPECT_AUTO_FIELDS = frozenset({"id", "created_at", "updated_at"})
 # Phase 1（候補収集）で取得するフィールド
 PROSPECT_CANDIDATE_FIELDS: tuple[str, ...] = (
     "name", "organization_id", "department", "overview", "industry", "website_url",
+    "org_lookup_status",
 )
 
 # Phase 2（連絡先取得）で取得するフィールド

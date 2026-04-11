@@ -130,11 +130,12 @@ def main() -> None:
 
     conn = get_connection(db_path)
 
-    # organization_id が NULL の prospects を取得（重複する name は1件だけ）
+    # organization_id が NULL かつ org_lookup_status が未設定の prospects を取得（重複する name は1件だけ）
     cursor = conn.execute(
         "SELECT id, name, website_url"
         " FROM prospects"
         " WHERE organization_id IS NULL"
+        "   AND (org_lookup_status IS NULL)"
         " GROUP BY name"
         " ORDER BY id ASC"
         " LIMIT ?",

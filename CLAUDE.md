@@ -103,7 +103,7 @@ OK: 「leo.uno@surpassone.com 宛にテストメールを送信してくださ�
 
 ## 一時スキル・スクリプトの削除予定
 
-- **v0.6.0 リリース時に削除**: `skills/data-migration-v050/`、`scripts/link_organization.py`、`test_imports.py` から `link_organization` の行
+- **v0.6.0 リリース時に削除**: `skills/data-migration-v050/`、`scripts/link_organization.py`、`scripts/mark_org_lookup_status.py`、`test_imports.py` から `link_organization` と `mark_org_lookup_status` の行
 
 ## リリース前のチェック（必須）
 `cd plugins/lead-ace/scripts && npx pyright && python3 test_imports.py`

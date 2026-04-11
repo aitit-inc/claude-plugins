@@ -113,14 +113,18 @@ NTA 検索で見つからなかった営業先。以下の順で法人番号の�
     }
   ],
   "skipped": [
-    {"prospect_id": 99, "name": "○○", "reason": "理由"}
+    {"prospect_id": 99, "status": "not_applicable", "reason": "個人事業主"}
   ]
 }
 
-### フィールド補足
+### フィールド補足（confirmed）
 - organization_name: 候補の name（国税庁公表サイトの名称）をそのまま使う
 - name（省略可）: prospects.name を変更する場合のみ追加。例: organization_name="学校法人○○" で prospect が個別学校の場合 name="○○専門学校"
 - department（省略可）: 部署を設定する場合のみ追加
+
+### フィールド補足（skipped）
+- status: "not_applicable"（法人番号が存在しない: 個人事業主、法人格なし、海外企業等）or "unresolvable"（検索したが特定できなかった: 同名多数、サイトアクセス不可等）
+- reason: スキップ理由（簡潔に）
 
 ### 注意
 - fetch_url.py は Jina Reader（20 RPM 制限）を使用する。大量にフェッチする場合はエラーハンドリングすること
@@ -139,12 +143,30 @@ NTA 検索で見つからなかった営業先。以下の順で法人番号の�
 echo '<merged_json>' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/link_organization.py data.db
 ```
 
-### 5. 結果報告
+### 5. スキップ済みのマーキング
+
+全サブエージェントの `skipped` 配列を結合し、`mark_org_lookup_status.py` で再検索防止の印をつける。
+
+```bash
+echo '<skipped_json>' | python3 ${CLAUDE_PLUGIN_ROOT}/scripts/mark_org_lookup_status.py data.db
+```
+
+JSON 配列の各オブジェクト:
+
+```json
+{"prospect_id": 99, "status": "not_applicable", "reason": "個人事業主のため法人番号なし"}
+```
+
+status の使い分け:
+- `not_applicable` — 法人番号が存在しない（個人事業主、法人格なし、海外企業等）
+- `unresolvable` — 検索したが特定できなかった（同名多数、サイトアクセス不可等。後日リトライ可能）
+
+### 6. 結果報告
 
 ユーザーに報告する:
 
 - 確定・更新した件数
-- スキップした件数と主な理由
+- スキップした件数（not_applicable / unresolvable 内訳）
 - 残りの未移行件数:
 
 ```bash

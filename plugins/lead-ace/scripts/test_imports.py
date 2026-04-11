@@ -24,6 +24,7 @@ MODULES = [
     "init_db",
     "license",
     "link_organization",
+    "mark_org_lookup_status",
     "merge_prospects",
     "preflight",
     "query_db",
