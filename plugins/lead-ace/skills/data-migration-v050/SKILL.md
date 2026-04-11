@@ -37,18 +37,18 @@ python3 -c "import json; d=json.load(open('/tmp/la_lookup.json')); print(f'searc
 
 ### 2. バッチ分割
 
-candidates_found のエントリを **20件ずつ** のバッチファイルに分割する:
+`candidates_found` と `not_found` の両方を **20件ずつ** のバッチファイルに分割する:
 
 ```bash
 python3 -c "
 import json, math
 data = json.load(open('/tmp/la_lookup.json'))
-found = [d for d in data['details'] if d['status'] == 'candidates_found']
+targets = [d for d in data['details'] if d['status'] in ('candidates_found', 'not_found')]
 bs = 20
-for i in range(0, len(found), bs):
+for i in range(0, len(targets), bs):
     with open(f'/tmp/la_batch_{i//bs}.json', 'w') as f:
-        json.dump(found[i:i+bs], f, ensure_ascii=False)
-print(f'{len(found)} prospects -> {math.ceil(len(found)/bs)} batches')
+        json.dump(targets[i:i+bs], f, ensure_ascii=False)
+print(f'{len(targets)} prospects -> {math.ceil(len(targets)/bs)} batches')
 "
 ```
 
@@ -68,24 +68,37 @@ print(f'{len(found)} prospects -> {math.ceil(len(found)/bs)} batches')
 
 ## 入力
 Read tool で <BATCH_FILE> を読み、JSON 配列を取得する。
-各エントリは {prospect_id, name, website_url, candidates: [{number, name, reading, address}]} の形式。
+各エントリは以下のいずれか:
+- candidates_found: {prospect_id, name, website_url, status: "candidates_found", candidates: [{number, name, reading, address}]}
+- not_found: {prospect_id, name, website_url, status: "not_found"}
 
-## 照合ルール
+## 処理手順
 
-### 自動確定（Web調査不要）
+### A. candidates_found エントリ
+
+#### 自動確定（Web調査不要）
 候補が1件のみで、以下を**全て**満たす場合はそのまま確定してよい:
 - 候補の法人名と prospect の name が実質同一（全角半角・法人種別の位置違いは許容）
 - 法人種別が prospect の業種と矛盾しない（例: 営業先が学校なのに候補が株式会社→矛盾）
 
-### 要調査
+#### 要調査
 自動確定できない場合、以下で調査する:
 1. fetch_url.py で prospect の website を確認:
    python3 ${CLAUDE_PLUGIN_ROOT}/scripts/fetch_url.py --url "<website_url>" --prompt "この法人の正式名称、業種、所在地を抽出して"
 2. 必要に応じて WebSearch で追加調査
 
-### 判定
+#### 判定
 - **確定**: 法人名・業種が整合 → confirmed に追加
 - **スキップ**: 判断できない or 候補が無関係 → skipped に追加
+
+### B. not_found エントリ
+
+NTA 検索で見つからなかった営業先。以下の順で法人番号の特定を試みる:
+
+1. **WebSearch**: 「<prospect名> 法人番号」や「<prospect名> 会社概要」で検索し、法人番号や正式法人名を探す
+2. **fetch_url.py**: prospect の website_url から正式名称を取得し、それで再度 WebSearch
+3. 上記で法人番号が判明した場合 → confirmed に追加
+4. 特定できない場合 → skipped に追加（reason に試したことを簡潔に記載）
 
 ## 出力
 処理完了後、以下の JSON 構造を**テキストとして**返すこと:

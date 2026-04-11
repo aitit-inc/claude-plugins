@@ -58,22 +58,53 @@ _LEGAL_ENTITY_PATTERN = re.compile(
 )
 
 
+def _filter_results(results: list[SearchResult]) -> list[SearchResult]:
+    """name が空の候補を除外する（パース失敗）。"""
+    return [c for c in results if c["name"].strip()]
+
+
 def search_candidates(name: str) -> list[SearchResult]:
     """国税庁法人番号公表サイトで法人番号の候補を検索する。
 
     自動採用はしない。候補一覧を返すのみ。
     確定は LLM または人間が判断する。
+
+    検索戦略（段階的にフォールバック）:
+    1. 法人格を除去して検索（例: 「株式会社ABC」→「ABC」）
+    2. 0件なら末尾のスペース区切りを削って再検索（例: 「早稲田大学 キャリアセンター」→「早稲田大学」）
+    3. さらに0件ならもう1段短くして再検索
     """
     search_name = unicodedata.normalize("NFKC", name).strip()
     clean_name = _LEGAL_ENTITY_PATTERN.sub("", search_name).strip()
 
+    # 1. フル名称で検索
     try:
-        result = search(clean_name)
+        candidates = _filter_results(search(clean_name)["results"])
     except (RuntimeError, subprocess.TimeoutExpired):
         return []
 
-    # name が空の候補は除外（パース失敗）
-    return [c for c in result["results"] if c["name"].strip()]
+    if candidates:
+        return candidates
+
+    # 2. スペースで区切って末尾を削りながらリトライ（最大2回）
+    current = clean_name
+    for _ in range(2):
+        if " " not in current and "　" not in current:
+            break
+        # 全角・半角スペースの末尾部分を削除
+        current = re.split(r"[\s　]+", current)
+        current = " ".join(current[:-1]).strip() if len(current) > 1 else current[0]
+        if not current:
+            break
+        print(f"    リトライ: 「{current}」で再検索...", file=sys.stderr)
+        try:
+            candidates = _filter_results(search(current)["results"])
+        except (RuntimeError, subprocess.TimeoutExpired):
+            continue
+        if candidates:
+            return candidates
+
+    return []
 
 
 # ---------------------------------------------------------------------------
