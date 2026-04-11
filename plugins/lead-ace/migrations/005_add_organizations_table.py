@@ -2,6 +2,7 @@
 
 organizations: 法人単位のマスタ（corporate_number が PK）
 prospects.department: 法人内の部署・拠点名（nullable）
+prospects.corporate_number: 旧スキーマの UNIQUE 制約を除去（FKなので複数 prospect が同一法人番号を共有可能）
 email/contact_form_url: グローバル UNIQUE 制約で二重送信を防止
 """
 
@@ -71,14 +72,65 @@ def up(conn: sqlite3.Connection) -> None:
             ),
         )
 
-    # 3. prospects に department カラム追加
+    # 3. prospects.corporate_number の UNIQUE 制約を除去
+    # 旧スキーマでは corporate_number TEXT UNIQUE だったが、organizations への FK なので
+    # 複数 prospect が同一法人番号を共有できる必要がある。
+    # SQLite はカラム制約の変更ができないため、テーブル再作成で対応する。
+    autoindex_names = {
+        idx[1] for idx in conn.execute("PRAGMA index_list(prospects)").fetchall()
+        if idx[1] and idx[1].startswith("sqlite_autoindex_prospects")
+    }
+    has_unique_on_corp_num = False
+    for idx_name in autoindex_names:
+        cols = conn.execute(f"PRAGMA index_info('{idx_name}')").fetchall()
+        col_names = {col[2] for col in cols}
+        # corporate_number または organization_id（リネーム後）の autoindex
+        if col_names & {"corporate_number", "organization_id"}:
+            has_unique_on_corp_num = True
+            break
+
+    if has_unique_on_corp_num:
+        # 現在のカラム名を取得（007/008 適用済みなら name/organization_id、未適用なら company_name/corporate_number）
+        col_info = conn.execute("PRAGMA table_info(prospects)").fetchall()
+        current_cols = [col[1] for col in col_info]
+
+        cols_csv = ", ".join(current_cols)
+        # 新テーブルのカラム定義を動的に構築
+        col_defs: list[str] = []
+        for col in col_info:
+            col_name: str = col[1]
+            col_type: str = col[2]
+            not_null: int = col[3]
+            default_val: str | None = col[4]
+            is_pk: int = col[5]
+
+            parts = [col_name, col_type]
+            if is_pk:
+                parts.append("PRIMARY KEY AUTOINCREMENT")
+            elif not_null:
+                if default_val is not None:
+                    # 式を含む DEFAULT は () で囲む必要がある
+                    parts.append(f"NOT NULL DEFAULT ({default_val})")
+                else:
+                    parts.append("NOT NULL")
+            elif default_val is not None:
+                parts.append(f"DEFAULT ({default_val})")
+            # UNIQUE は付けない（これが修正の目的）
+            col_defs.append(" ".join(parts))
+
+        conn.execute("ALTER TABLE prospects RENAME TO _prospects_old")
+        conn.execute(f"CREATE TABLE prospects ({', '.join(col_defs)})")
+        conn.execute(f"INSERT INTO prospects ({cols_csv}) SELECT {cols_csv} FROM _prospects_old")
+        conn.execute("DROP TABLE _prospects_old")
+
+    # 4. prospects に department カラム追加
     existing_cols = {
         col[1] for col in conn.execute("PRAGMA table_info(prospects)").fetchall()
     }
     if "department" not in existing_cols:
         conn.execute("ALTER TABLE prospects ADD COLUMN department TEXT")
 
-    # 4. email / contact_form_url に UNIQUE 制約追加
+    # 5. email / contact_form_url に UNIQUE 制約追加
     existing_indexes = {
         idx[1] for idx in conn.execute("PRAGMA index_list(prospects)").fetchall()
     }
