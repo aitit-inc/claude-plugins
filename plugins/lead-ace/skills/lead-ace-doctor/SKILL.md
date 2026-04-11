@@ -29,7 +29,7 @@ SQL を書く前に以下を読み、現在のスキーマを把握すること:
 ### 0. プリフライト
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db --migrate-only
 ```
 
 ### 1. 状況確認
