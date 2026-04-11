@@ -14,7 +14,7 @@ v0.5.0 で organizations テーブルを追加し、prospects に organization_i
 ### 0. プリフライト
 
 ```bash
-python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db "$0"
+python3 ${CLAUDE_PLUGIN_ROOT}/scripts/preflight.py data.db --migrate-only
 ```
 
 ### 1. 未移行データの検索

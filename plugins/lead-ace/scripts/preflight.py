@@ -102,30 +102,39 @@ def apply_pending(conn: sqlite3.Connection) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Preflight チェック")
     parser.add_argument("db_path", help="SQLite データベースのパス")
-    parser.add_argument("project_id", help="プロジェクト ID")
+    parser.add_argument("project_id", nargs="?", default=None, help="プロジェクト ID（--migrate-only 時は不要）")
+    parser.add_argument("--migrate-only", action="store_true", help="マイグレーションのみ実行（プロジェクト登録チェックをスキップ）")
     args = parser.parse_args()
 
     db_path: str = args.db_path
-    project_id: str = args.project_id
+    project_id: str | None = args.project_id
 
-    # 1. プロジェクト登録チェック
-    project_path = os.path.join(os.getcwd(), project_id)
-    if not check_project_registered(project_path):
-        print_json({
-            "status": "error",
-            "error": "NOT_REGISTERED",
-            "message": f"このプロジェクトはセットアップされていません。"
-                       f"先に /setup {project_id} を実行してください。",
-        })
-        sys.exit(1)
+    if not args.migrate_only:
+        if not project_id:
+            print_json({
+                "status": "error",
+                "error": "MISSING_PROJECT_ID",
+                "message": "project_id を指定してください（または --migrate-only を使用）。",
+            })
+            sys.exit(1)
+
+        # 1. プロジェクト登録チェック
+        project_path = os.path.join(os.getcwd(), project_id)
+        if not check_project_registered(project_path):
+            print_json({
+                "status": "error",
+                "error": "NOT_REGISTERED",
+                "message": f"このプロジェクトはセットアップされていません。"
+                           f"先に /setup {project_id} を実行してください。",
+            })
+            sys.exit(1)
 
     # 2. DB 存在チェック
     if not os.path.exists(db_path):
         print_json({
             "status": "error",
             "error": "DB_NOT_FOUND",
-            "message": f"データベース {db_path} が見つかりません。"
-                       f"/setup {project_id} を実行してください。",
+            "message": f"データベース {db_path} が見つかりません。",
         })
         sys.exit(1)
 
