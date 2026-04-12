@@ -35,13 +35,7 @@ import sqlite3
 import sys
 from typing import TypedDict, cast
 
-from check_duplicate import (  # pyright: ignore[reportMissingModuleSource]
-    check_name,
-    check_corporate_number,
-    check_email,
-    check_sns,
-    check_website_domain,
-)
+from check_duplicate import ALLOWED_SNS_KEYS  # pyright: ignore[reportMissingModuleSource]
 from sales_db import DuplicateMatch, error_exit, get_connection, print_json, upsert_organization  # pyright: ignore[reportMissingModuleSource]
 
 
@@ -127,12 +121,55 @@ def validate_entry(entry: ProspectEntry, index: int) -> list[str]:
 
 
 def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[DuplicateMatch]:
-    """エントリの重複チェック。check_duplicate.py の関数を再利用。"""
+    """エントリの重複チェック。法人番号で分岐し、同一法人内のみチェック。
+
+    1. 法人番号で organizations を確認
+       - 新規法人 → 重複なし（return []）
+       - 既存法人 → 同一法人内の prospects で重複チェック
+    2. 同一法人内の prospects に対して email / contact_form_url / SNS で重複判定
+       - email / contact_form_url はグローバル UNIQUE 制約もあるため、INSERT 時にもDB側で保護される
+    """
+    corporate_number = entry.get("corporate_number")
+    if not corporate_number:
+        return []
+
+    # 1. 法人番号で organizations を確認
+    org = conn.execute(
+        "SELECT corporate_number FROM organizations WHERE corporate_number = ?",
+        (corporate_number,),
+    ).fetchone()
+    if org is None:
+        return []  # 新規法人 → 重複なし
+
+    # 2. 既存法人 → 同一法人内の prospects で重複チェック
     matches: list[DuplicateMatch] = []
 
     email = entry.get("email")
     if email:
-        matches.extend(check_email(conn, email))
+        for row in conn.execute(
+            "SELECT id, name FROM prospects WHERE organization_id = ? AND email = ?",
+            (corporate_number, email),
+        ):
+            matches.append(DuplicateMatch(
+                match_type="EXACT_MATCH",
+                prospect_id=row["id"],
+                name=row["name"],
+                reason=f"同一法人内でemail一致: {email}",
+            ))
+
+    contact_form_url = entry.get("contact_form_url")
+    if contact_form_url:
+        for row in conn.execute(
+            "SELECT id, name FROM prospects"
+            " WHERE organization_id = ? AND contact_form_url = ?",
+            (corporate_number, contact_form_url),
+        ):
+            matches.append(DuplicateMatch(
+                match_type="EXACT_MATCH",
+                prospect_id=row["id"],
+                name=row["name"],
+                reason=f"同一法人内でフォームURL一致: {contact_form_url}",
+            ))
 
     sns_raw = entry.get("sns_accounts")
     if sns_raw is not None:
@@ -147,20 +184,20 @@ def find_duplicates(conn: sqlite3.Connection, entry: ProspectEntry) -> list[Dupl
         else:
             sns = sns_raw
         for key, value in sns.items():
-            if value:
-                matches.extend(check_sns(conn, key, value))
-
-    corporate_number = entry.get("corporate_number")
-    if corporate_number:
-        matches.extend(check_corporate_number(conn, corporate_number))
-
-    name = entry.get("name")
-    if name:
-        matches.extend(check_name(conn, name))
-
-    website_url = entry.get("website_url")
-    if website_url:
-        matches.extend(check_website_domain(conn, website_url))
+            if value and key in ALLOWED_SNS_KEYS:
+                for row in conn.execute(
+                    "SELECT id, name FROM prospects"
+                    " WHERE organization_id = ?"
+                    " AND sns_accounts IS NOT NULL"
+                    f" AND json_extract(sns_accounts, '$.{key}') = ?",
+                    (corporate_number, value),
+                ):
+                    matches.append(DuplicateMatch(
+                        match_type="EXACT_MATCH",
+                        prospect_id=row["id"],
+                        name=row["name"],
+                        reason=f"同一法人内でSNS一致: {key}={value}",
+                    ))
 
     # 重複排除（同じ prospect_id が複数段階でヒットする場合）
     seen: set[int] = set()
