@@ -1,5 +1,13 @@
 # surpassone-plugins
 
+> **移行のお知らせ:** `lead-ace` プラグインは専用リポジトリ [aitit-inc/lead-ace](https://github.com/aitit-inc/lead-ace) に移行しました。
+> 新しいインストールコマンド:
+> ```
+> /plugin marketplace add aitit-inc/lead-ace
+> /plugin install lead-ace@lead-ace
+> ```
+> このリポジトリはアーカイブ予定です。
+
 SurpassOne Inc. が提供する Claude Code プラグインのマーケットプレイスです。
 
 ## セットアップ
