@@ -1,14 +1,6 @@
 # surpassone-plugins
 
-> **移行のお知らせ:** `lead-ace` プラグインは専用リポジトリ [aitit-inc/lead-ace](https://github.com/aitit-inc/lead-ace) に移行しました。
-> 新しいインストールコマンド:
-> ```
-> /plugin marketplace add aitit-inc/lead-ace
-> /plugin install lead-ace@lead-ace
-> ```
-> このリポジトリはアーカイブ予定です。
-
-SurpassOne Inc. が提供する Claude Code プラグインのマーケットプレイスです。
+SurpassOne Inc. が提供する Claude Code プラグインのマーケットプレイスです。現在公開中のプラグインはありません。
 
 ## セットアップ
 
@@ -16,18 +8,6 @@ Claude Code 内で以下を実行:
 
 ```
 /plugin marketplace add aitit-inc/claude-plugins
-```
-
-## プラグイン一覧
-
-| プラグイン | 概要 |
-|---|---|
-| [lead-ace](./plugins/lead-ace/) | Autonomous lead generation — builds prospect lists, runs outbound outreach, and iterates on strategy hands-free |
-
-インストール例:
-
-```
-/plugin install lead-ace@surpassone-plugins
 ```
 
 ## 更新
@@ -39,7 +19,4 @@ Claude Code 内で以下を実行:
 
 ## ライセンス
 
-このリポジトリのプラグインは SurpassOne Inc. の独自ライセンスの下で提供されています。詳細は [LICENSE](./LICENSE) を参照してください。
-
-- **無料版:** 1プロジェクトまで利用可能
-- **有料版:** 複数プロジェクト無制限。ライセンスキーは https://leadace.surpassone.com で購入できます。
+[LICENSE](./LICENSE) を参照してください。

@@ -4,11 +4,5 @@
     "name": "SurpassOne Inc."
   },
   "description": "SurpassOne Inc. が提供する Claude Code プラグイン集",
-  "plugins": [
-    {
-      "name": "lead-ace",
-      "source": "./plugins/lead-ace",
-      "description": "Autonomous lead generation plugin. Builds prospect lists, runs outbound outreach, and iterates on strategy — all hands-free."
-    }
-  ]
+  "plugins": []
 }
